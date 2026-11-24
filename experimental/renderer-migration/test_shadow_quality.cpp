@@ -25,6 +25,8 @@ int main()
     Require(TerrainPcfWidth(0) == 2, "low quality uses four taps");
     Require(TerrainPcfWidth(1) == 2, "medium quality uses four taps");
     Require(TerrainPcfWidth(2) == 3, "high quality uses nine taps");
-    Require(TerrainPcfWidth(3) == 3, "ultra quality uses nine taps");
+    Require(TerrainPcfWidth(3) == 5, "ultra quality uses twenty-five taps");
+    Require(TerrainPcfWidth(4) == 5, "future quality tiers should use the maximum kernel");
+    Require(TerrainPcfWidth(-1) == 2, "invalid negative quality must stay on fast kernel");
     std::cout << "PASS: shadow range and terrain PCF quality policy\n";
 }

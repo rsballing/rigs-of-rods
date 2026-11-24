@@ -153,7 +153,11 @@ void shadow_receiver_ps(
 	float shininess = specularColour.w;  specularColour.w = 1;
 
 	// calculate lit value.
-	float4 lighting = lit(dot(normal, lightVec), dot(normal, halfAngle), shininess * 52) * 	(0.3f + 0.7f * shadowing);
+	// A shadow blocks direct diffuse AND specular light. Preserve the sky
+	// ambient term separately below so occluded faces are not pitch black.
+	// The old 0.3 + 0.7 * shadowing kept 30% direct sun in full shadow,
+	// washing out vehicle and terrain contrast.
+	float4 lighting = lit(dot(normal, lightVec), dot(normal, halfAngle), shininess * 52) * shadowing;
 
 
 	oColour = (diffuseColour * clamp(ambient + lightDiffuse * lighting.y, 0, 1)) + 	(lightSpecular * specularColour * lighting.z);

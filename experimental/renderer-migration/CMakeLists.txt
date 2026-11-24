@@ -14,3 +14,13 @@ enable_testing()
 add_test(NAME deformable_mesh_frame COMMAND test_mesh_frame)
 add_test(NAME sky_lighting_math COMMAND test_sky_lighting)
 add_test(NAME shadow_quality_policy COMMAND test_shadow_quality)
+
+# Source-contract tests guard against regressions in dynamically generated
+# Cg and OGRE plugin packaging code; they do not replace GPU runtime tests.
+find_package(Python3 COMPONENTS Interpreter QUIET)
+if(Python3_Interpreter_FOUND)
+    add_test(
+        NAME renderer_source_contracts
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/test_renderer_source_invariants.py
+    )
+endif()

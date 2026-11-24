@@ -1,0 +1,70 @@
+"""Source-contract checks for OGRE 1.x renderer regression fixes.
+
+These are inexpensive static checks, NOT GPU shader compilation.
+They complement the Windows full build and standalone C++ policy tests.
+"""
+from pathlib import Path
+import unittest
+
+ROOT = Path(__file__).resolve().parents[2]
+
+
+def load(path: str) -> str:
+    return (ROOT / path).read_text(encoding="utf-8")
+
+
+class RendererSourceContracts(unittest.TestCase):
+    def test_terrain_shadow_uses_projected_depth(self):
+        cpp = load("source/main/terrain/OgreTerrainPSSMMaterialGenerator.cpp")
+        self.assertIn("newUV = newUV / newUV.w;", cpp)
+        self.assertIn("depth >= newUV.z", cpp)
+        self.assertNotIn("depth >= uv.z", cpp)
+
+    def test_terrain_shadows_end_at_last_cascade(self):
+        cpp = load("source/main/terrain/OgreTerrainPSSMMaterialGenerator.cpp")
+        self.assertIn("Vector4 splitPoints(0, 0, 0, 0);", cpp)
+        self.assertIn("i <= numTextures && i <= 4", cpp)
+        self.assertIn("camDepth > pssmSplitPoints.", cpp)
+        self.assertIn("ShaderHelper::getChannel(numTextures - 1)", cpp)
+
+    def test_managed_shadows_end_at_last_cascade(self):
+        cpp = load("source/main/gfx/ShadowManager.cpp")
+        self.assertIn("for (int i = 0; i < 4; ++i)", cpp)
+        self.assertIn("setManagedMaterialSplitPoints(pssmSetup->getSplitPoints());", cpp)
+        shader = load("resources/managed_materials/shadows/pssm/on/pssm.cg")
+        self.assertIn("else if (uv.z <= pssmSplitPoints.w)", shader)
+        self.assertIn("shadowing = 1.0f;", shader)
+
+    def test_quality_matches_shader_kernel_policy(self):
+        header = load("source/main/gfx/ShadowQualitySettings.h")
+        self.assertIn("if (quality >= 3) return 5;", header)
+        self.assertIn("return quality >= 2 ? 3 : 2;", header)
+        generator = load("source/main/terrain/OgreTerrainPSSMMaterialGenerator.cpp")
+        self.assertIn("ShadowQualitySettings::TerrainPcfWidth(", generator)
+        self.assertIn("SHADOW_SAMPLES NUM_SHADOW_SAMPLES_1D*NUM_SHADOW_SAMPLES_1D", generator)
+
+    def test_runtime_reconfiguration_updates_splits(self):
+        cpp = load("source/main/gfx/ShadowManager.cpp")
+        self.assertIn("PSSM_Shadows.Quality = App::gfx_shadow_quality->getInt();", cpp)
+        self.assertIn("pssmSetup->calculateSplitPoints(3, near_clip,", cpp)
+
+    def test_windows_package_adds_legal_directx_dlls(self):
+        workflow = load(".github/workflows/build-game.yml")
+        script = load("tools/windows/Add-LegacyDirectX.ps1")
+        self.assertIn("Get-AuthenticodeSignature", script)
+        for dll in ("D3DX9_43.dll", "D3DCompiler_43.dll"):
+            self.assertIn(dll, script)
+        for step in (
+            "Bundle signed Microsoft DirectX 9 runtime DLLs",
+            "Upload redist folder",
+            "Package and prerelease Windows graphics preview",
+        ):
+            self.assertIn(step, workflow)
+        self.assertLess(
+            workflow.index("Bundle signed Microsoft DirectX 9 runtime DLLs"),
+            workflow.index("      - name: Upload build to itch.io", workflow.index("  build-msvc:")),
+        )
+
+
+if __name__ == "__main__":
+    unittest.main(verbosity=2)

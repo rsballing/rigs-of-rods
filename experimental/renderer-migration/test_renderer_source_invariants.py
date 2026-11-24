@@ -35,6 +35,13 @@ class RendererSourceContracts(unittest.TestCase):
         self.assertIn("else if (uv.z <= pssmSplitPoints.w)", shader)
         self.assertIn("shadowing = 1.0f;", shader)
 
+    def test_managed_material_shadows_suppress_only_direct_lighting(self):
+        shader = load("resources/managed_materials/shadows/pssm/on/pssm.cg")
+        self.assertIn("shininess * 52) * shadowing;", shader)
+        self.assertNotIn("0.3f + 0.7f * shadowing", shader.split("float4 lighting = ")[1])
+        self.assertIn("ambient + lightDiffuse * lighting.y", shader)
+        self.assertIn("lightSpecular * specularColour * lighting.z", shader)
+
     def test_default_shadow_caster_is_opaque(self):
         material = load("resources/managed_materials/shadows/pssm/on/shadows_depth.material")
         self.assertIn("fragment_program_ref PSSM/shadow_caster_ps", material)

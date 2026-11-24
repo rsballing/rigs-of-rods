@@ -28,5 +28,9 @@ int main()
     Require(TerrainPcfWidth(3) == 5, "ultra quality uses twenty-five taps");
     Require(TerrainPcfWidth(4) == 5, "future quality tiers should use the maximum kernel");
     Require(TerrainPcfWidth(-1) == 2, "invalid negative quality must stay on fast kernel");
+    Require(ShouldCastVehicleShadows(false, true), "disabling optimization restores inside-cab shadows");
+    Require(ShouldCastVehicleShadows(false, false), "no optimization keeps external shadows");
+    Require(!ShouldCastVehicleShadows(true, true), "inside cab optimization hides shadows");
+    Require(ShouldCastVehicleShadows(true, false), "outside cab always casts shadows");
     std::cout << "PASS: shadow range and terrain PCF quality policy\n";
 }

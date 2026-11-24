@@ -1398,12 +1398,12 @@ void TerrainPSSMMaterialGenerator::SM2Profile::ShaderHelperCg::generateFpDynamic
         outStream << "\n"
             "	float4 pssmSplitPoints, float camDepth) \n"
             "{ \n"
-            "\tfloat shadow = 1.0; \\n"
+            "\tfloat shadow = 1.0; \n"
             // Beyond the final split, shadow textures contain no coverage.
             // Treat those pixels as fully lit rather than smearing the last map.
             "\tif (camDepth > pssmSplitPoints." << ShaderHelper::getChannel(numTextures - 1)
-            << ") return 1.0; \\n"
-            "\t// calculate shadow \\n";
+            << ") return 1.0; \n"
+            "\t// calculate shadow \n";
 
         for (uint i = 0; i < numTextures; ++i)
         {

@@ -203,7 +203,7 @@ float shadowPCF(sampler2D shadowMap, float4 shadowMapPos, float2 offset)
 {
 	shadowMapPos = shadowMapPos / shadowMapPos.w;
 	float2 uv = shadowMapPos.xy;
-	float3 o = float3(offset, -offset.x) * 0.3f;
+	float3 o = float3(offset, -offset.x) * 0.75f;
 
 	///  bias =  -0.99f  -1 no shadow  0 all shadowed
 	float shPos = shadowMapPos.z /*+ 0.0f*/;

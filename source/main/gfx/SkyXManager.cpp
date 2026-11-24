@@ -115,7 +115,21 @@ bool SkyXManager::UpdateSkyLight()
 	if (App::GetGameContext()->GetTerrain()->getWater()) App::GetGameContext()->GetTerrain()->getWater()->setFadeColour(Ogre::ColourValue(sunCol.x, sunCol.y, sunCol.z));
 	*/
 	Ogre::Vector3 ambientCol = mAmbientGradient.getColor(point);
-	mLight1->setDiffuseColour(ambientCol.x, ambientCol.y, ambientCol.z);
+	if (App::gfx_natural_sunlight->getBool())
+	{
+		// SkyX previously defined a sun gradient but did not apply it to the
+		// directional light. Use it only when the experimental option is on.
+		// Preserve the existing terrain-specific ambient light settings.
+		const Ogre::Vector3 sunGradient = mSunGradient.getColor(point);
+		const SkyLightingMath::RGB sunlight = SkyLightingMath::DirectionalSunlight(
+		    point, {sunGradient.x, sunGradient.y, sunGradient.z});
+		mLight1->setDiffuseColour(sunlight.r, sunlight.g, sunlight.b);
+	}
+	else
+	{
+		// Legacy lighting, unchanged when the option is disabled.
+		mLight1->setDiffuseColour(ambientCol.x, ambientCol.y, ambientCol.z);
+	}
 	mLight1->setPosition(100,100,100);
 
 	if (mBasicController->getTime().x > 12)

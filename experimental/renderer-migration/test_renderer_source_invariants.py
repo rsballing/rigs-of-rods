@@ -43,6 +43,13 @@ class RendererSourceContracts(unittest.TestCase):
         self.assertIn("ShadowQualitySettings::TerrainPcfWidth(", generator)
         self.assertIn("SHADOW_SAMPLES NUM_SHADOW_SAMPLES_1D*NUM_SHADOW_SAMPLES_1D", generator)
 
+    def test_vehicle_shadows_restore_when_optimization_disabled(self):
+        actor = load("source/main/physics/Actor.cpp")
+        ui = load("source/main/gui/panels/GUI_GameSettings.cpp")
+        self.assertIn("ShadowQualitySettings::ShouldCastVehicleShadows(", actor)
+        self.assertIn("&& !App::gfx_reduce_shadows->getBool()", ui)
+        self.assertIn("actor->GetGfxActor()->SetCastShadows(true);", ui)
+
     def test_runtime_reconfiguration_updates_splits(self):
         cpp = load("source/main/gfx/ShadowManager.cpp")
         self.assertIn("PSSM_Shadows.Quality = App::gfx_shadow_quality->getInt();", cpp)

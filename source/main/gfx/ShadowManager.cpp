@@ -98,8 +98,10 @@ void ShadowManager::processPSSM()
 {
     App::GetGfxScene()->GetSceneManager()->setShadowTechnique(Ogre::SHADOWTYPE_TEXTURE_ADDITIVE_INTEGRATED);
 
-    App::GetGfxScene()->GetSceneManager()->setShadowDirectionalLightExtrusionDistance(299.0f);
-    App::GetGfxScene()->GetSceneManager()->setShadowFarDistance(350.0f);
+    // Expand the cascade range when requested; keep the 350-unit default.
+    const int shadow_distance = ShadowQualitySettings::ClampDistance(App::gfx_shadow_distance->getInt());
+    App::GetGfxScene()->GetSceneManager()->setShadowDirectionalLightExtrusionDistance(ShadowQualitySettings::DirectionalExtrusion(shadow_distance));
+    App::GetGfxScene()->GetSceneManager()->setShadowFarDistance(static_cast<float>(shadow_distance));
     App::GetGfxScene()->GetSceneManager()->setShadowTextureCountPerLightType(Ogre::Light::LT_DIRECTIONAL, PSSM_Shadows.ShadowsTextureNum);
     App::GetGfxScene()->GetSceneManager()->setShadowTextureCount(PSSM_Shadows.ShadowsTextureNum);
 

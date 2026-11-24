@@ -60,11 +60,44 @@ try {
         'These DLLs are not licensed as part of Rigs of Rods GPL source code.'
     ) | Set-Content -Path (Join-Path $legalDir 'README.txt') -Encoding UTF8
 
-    foreach ($dll in @('D3DX9_43.dll', 'D3DCompiler_43.dll')) {
-        if (-not (Test-Path (Join-Path $destination $dll) -PathType Leaf)) {
-            throw "Packaging verification failed: $dll is missing"
+    # Validate the actual extracted portable game contents before publishing.
+    # This catches the exact missing-renderer startup failure seen on Win11.
+    foreach ($filename in @(
+        'D3DX9_43.dll',
+        'D3DCompiler_43.dll',
+        'OgreMain.dll',
+        'RenderSystem_Direct3D9.dll',
+        'RenderSystem_Direct3D11.dll',
+        'RenderSystem_GL.dll',
+        'RoR.exe',
+        'plugins.cfg'
+    )) {
+        if (-not (Test-Path (Join-Path $destination $filename) -PathType Leaf)) {
+            throw "Incomplete Windows distribution: missing $filename"
         }
     }
+    $configLines = @(Get-Content -LiteralPath (Join-Path $destination 'plugins.cfg'))
+    if (-not ($configLines | Where-Object { $_ -match '^\s*PluginFolder\s*=\s*\.\s*
+finally {
+    Remove-Item -LiteralPath $work -Recurse -Force -ErrorAction SilentlyContinue
+}
+ })) {
+        throw "plugins.cfg must use PluginFolder=., resolved beside RoR.exe"
+    }
+    foreach ($renderer in @('RenderSystem_Direct3D9', 'RenderSystem_Direct3D11', 'RenderSystem_GL')) {
+        $rendererLine = '^\s*Plugin\s*=\s*' + [regex]::Escape($renderer) + '\s*
+finally {
+    Remove-Item -LiteralPath $work -Recurse -Force -ErrorAction SilentlyContinue
+}
+
+        if (-not ($configLines | Where-Object { $_ -match $rendererLine })) {
+            throw "Configured render system is not enabled: $renderer"
+        }
+    }
+    if (-not (Test-Path (Join-Path $destination 'resources') -PathType Container)) {
+        throw "Incomplete Windows distribution: resources/ is missing"
+    }
+    Write-Host "Verified Direct3D9/11/OpenGL plugins, legacy DirectX DLLs, and resources."
 }
 finally {
     Remove-Item -LiteralPath $work -Recurse -Force -ErrorAction SilentlyContinue

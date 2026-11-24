@@ -131,11 +131,13 @@ void shadow_receiver_ps(
 		splitColour = float4(0, 0.9, 0, 1);
 		shadowing = shadowPCF(shadowMap1, LightPosition1, invShadowMapSize1.xy);/*1*/
 	}
-	else
+	else if (uv.z <= pssmSplitPoints.w)
 	{
 		splitColour = float4(0.9, 0.9, 0, 1);
 		shadowing = shadowPCF(shadowMap2, LightPosition2, invShadowMapSize2.xy);/*2*/
 	}
+	// Outside the last PSSM cascade, keep the fragment lit. Sampling the
+	// final cascade beyond the shadow far plane can smear dark artifacts.
 
 	// retrieve normalised light vector, expand from range-compressed
 	float3 lightVec = normalize(OSlightDir);

@@ -20,6 +20,9 @@
 #include "GUI_GameSettings.h"
 
 #include "AppContext.h"
+#include "Actor.h"
+#include "ActorManager.h"
+#include "GfxActor.h"
 #include "CacheSystem.h"
 #include "GameContext.h"
 #include "GUIManager.h"
@@ -403,7 +406,19 @@ void GameSettings::DrawGraphicsSettings()
 
     if (App::gfx_shadow_type->getEnum<GfxShadowType>() != GfxShadowType::NONE)
     {
-        DrawGCheckbox(App::gfx_reduce_shadows, _LC("GameSettings", "Shadow optimizations"));
+        if (DrawGCheckbox(App::gfx_reduce_shadows, _LC("GameSettings", "Shadow optimizations"))
+            && !App::gfx_reduce_shadows->getBool()
+            && App::app_state->getEnum<AppState>() == AppState::SIMULATION)
+        {
+            // Restore casting immediately for every active actor. Without
+            // this, actors hidden by the cab-camera optimization could keep
+            // their shadow flags disabled until the next camera transition.
+            for (ActorPtr const& actor : App::GetGameContext()->GetActorManager()->GetActors())
+            {
+                if (actor.GetRef() && actor->GetGfxActor())
+                    actor->GetGfxActor()->SetCastShadows(true);
+            }
+        }
         if (App::gfx_shadow_type->getEnum<GfxShadowType>() == GfxShadowType::PSSM)
         {
             DrawGIntSlider(App::gfx_shadow_quality, _LC("GameSettings", "Shadow quality"), 0, 3);

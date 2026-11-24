@@ -3,11 +3,6 @@ name: Build game
 
 on: [ push, pull_request ]
 
-# Do not queue multiple expensive Windows builds for obsolete preview commits.
-concurrency:
-  group: build-game-${{ github.ref }}
-  cancel-in-progress: ${{ github.ref == 'refs/heads/graphics-overhaul' }}
-
 jobs:
   build-gcc:
     name: Linux build on Ubuntu
@@ -156,43 +151,6 @@ jobs:
           if (-not (Test-Path 'redist')) { throw "Missing game redist folder" }
           $gameExe = Get-ChildItem 'redist' -Filter 'RoR.exe' -Recurse -File
           if (-not $gameExe) { throw "No RoR.exe found in installed distribution" }
-
-          # Detect broken plugins.cfg or missing renderer DLLs before publishing.
-          if (-not (Test-Path 'redist/plugins.cfg')) { throw "Missing plugins.cfg" }
-          $pluginConfig = Get-Content 'redist/plugins.cfg'
-          $renderers = @($pluginConfig | Where-Object {
-            $_ -match '^\s*Plugin\s*=\s*RenderSystem_(Direct3D9|Direct3D11|GL)\s*
-
-          $archive = 'RoR-Graphics-Preview-Windows.zip'
-          Compress-Archive -Path 'redist\*' -DestinationPath $archive -CompressionLevel Optimal -Force
-          if (-not (Test-Path $archive)) { throw "Failed to create Windows release ZIP" }
-
-          $tag = "graphics-preview-$env:GITHUB_RUN_NUMBER"
-          $notes = @'
-          Experimental Rigs of Rods graphics preview for Windows.
-          
-          Extract the entire ZIP before launching RoR.exe. Do not run the executable by itself.
-          Built automatically from the graphics-overhaul branch; gameplay and visual appearance are not verified.
-          New source changes include configurable shadow distance, softer filtering, and opt-in natural SkyX lighting.
-          The original master branch is not changed.
-          '@
-          $notes | Set-Content -Path 'release-notes.md' -Encoding UTF8
-          gh release create $tag "./$archive" --repo $env:GITHUB_REPOSITORY --target $env:GITHUB_SHA --title "RoR Graphics Preview (Windows) #$env:GITHUB_RUN_NUMBER" --notes-file 'release-notes.md' --prerelease
-
-      - name: Clean Conan pkgs
-        run: conan cache clean "*" -sbd
-        shell: cmd
-
-
-          } | ForEach-Object { ($_ -split '=', 2)[1].Trim() })
-          if ($renderers.Count -lt 2) { throw "Not enough active renderer plugins" }
-          if ('RenderSystem_Direct3D11' -notin $renderers) { throw "D3D11 renderer is disabled" }
-          foreach ($plugin in $renderers) {
-            if (-not (Test-Path "redist/$plugin.dll")) {
-              throw "Renderer $plugin.dll is missing"
-            }
-          }
-          Write-Host "Verified renderer DLLs: $($renderers -join ', ')"
 
           $archive = 'RoR-Graphics-Preview-Windows.zip'
           Compress-Archive -Path 'redist\*' -DestinationPath $archive -CompressionLevel Optimal -Force

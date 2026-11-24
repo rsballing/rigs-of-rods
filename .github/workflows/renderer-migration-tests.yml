@@ -1,0 +1,32 @@
+name: Renderer migration prototype tests
+
+on:
+  push:
+    branches: [graphics-overhaul]
+    paths:
+      - 'experimental/renderer-migration/**'
+      - 'source/main/gfx/SkyLightingMath.h'
+      - '.github/workflows/renderer-migration-tests.yml'
+  pull_request:
+    paths:
+      - 'experimental/renderer-migration/**'
+      - 'source/main/gfx/SkyLightingMath.h'
+      - '.github/workflows/renderer-migration-tests.yml'
+  workflow_dispatch:
+
+jobs:
+  standalone-cpp-tests:
+    name: Standalone C++ (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure
+        run: cmake -S experimental/renderer-migration -B build/renderer-migration -DCMAKE_BUILD_TYPE=Release
+      - name: Build
+        run: cmake --build build/renderer-migration --config Release --parallel 2
+      - name: Test
+        run: ctest --test-dir build/renderer-migration -C Release --output-on-failure

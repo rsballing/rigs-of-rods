@@ -35,6 +35,15 @@ class RendererSourceContracts(unittest.TestCase):
         self.assertIn("else if (uv.z <= pssmSplitPoints.w)", shader)
         self.assertIn("shadowing = 1.0f;", shader)
 
+    def test_default_shadow_caster_is_opaque(self):
+        material = load("resources/managed_materials/shadows/pssm/on/shadows_depth.material")
+        self.assertIn("fragment_program_ref PSSM/shadow_caster_ps", material)
+        self.assertNotIn("fragment_program_ref PSSM/shadow_caster_alpha_ps", material)
+        # The dedicated alpha caster remains available for materials that
+        # explicitly bind an opacity mask; it is not safe as a global default.
+        program = load("resources/managed_materials/shadows/pssm/on/depthshadows.program")
+        self.assertIn("fragment_program PSSM/shadow_caster_alpha_ps cg", program)
+
     def test_depth_samplers_use_point_filtering_for_manual_pcf(self):
         generator = load("source/main/terrain/OgreTerrainPSSMMaterialGenerator.cpp")
         self.assertIn("tu->setTextureFiltering(TFO_NONE);", generator)

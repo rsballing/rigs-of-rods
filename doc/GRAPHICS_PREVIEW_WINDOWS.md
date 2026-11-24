@@ -4,10 +4,14 @@ The `graphics-overhaul` branch is **experimental**. It builds against the origin
 
 ## Windows dependencies
 
-Windows GitHub Actions builds now use `tools/windows/Add-LegacyDirectX.ps1` **after** installing the game but **before** packaging the portable release. That script downloads the official `Microsoft.DXSDK.D3DX` **9.29.952.8** NuGet package and copies these unmodified, Microsoft-signed 64-bit release libraries directly beside `RoR.exe`:
+Windows GitHub Actions builds now use `tools/windows/Add-LegacyDirectX.ps1` **after** installing the game but **before** packaging the portable release. That script downloads the official `Microsoft.DXSDK.D3DX` **9.29.952.8** NuGet package and copies the four unmodified, Microsoft-signed 64-bit release libraries directly beside `RoR.exe`:
 
-- `D3DX9_43.dll`
-- `D3DCompiler_43.dll`
+- `D3DX9_43.dll` — legacy Direct3D9 utility API
+- `D3DCompiler_43.dll` — shader compiler used by the D3DX family
+- `d3dx10_43.dll` — required by `cgD3D10.dll`
+- `d3dx11_43.dll` — required by `cgD3D11.dll`
+
+An import-table audit of the Windows release also found `D3DCOMPILER_47.dll` (Windows 11 normally provides it) and the Microsoft Visual C++ runtime dependencies, which are handled through the regular system redistributable rather than bundled here.
 
 It also includes the available Microsoft package LICENSE/NOTICE and a source attribution under `licenses/Microsoft.DXSDK.D3DX`. Microsoft permits these particular binaries to be distributed *application-local* with the application, not relicensed under GPL. **Do not commit extracted third-party DLL binaries to the source repository** or substitute debug/x86 DLLs.
 

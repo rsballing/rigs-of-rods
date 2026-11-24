@@ -6,11 +6,23 @@ on:
     paths:
       - 'experimental/renderer-migration/**'
       - 'source/main/gfx/SkyLightingMath.h'
+      - 'source/main/gfx/ShadowQualitySettings.h'
+      - 'source/main/gfx/ShadowManager.cpp'
+      - 'source/main/terrain/OgreTerrainPSSMMaterialGenerator.cpp'
+      - 'resources/managed_materials/shadows/pssm/on/pssm.cg'
+      - 'tools/windows/Add-LegacyDirectX.ps1'
+      - '.github/workflows/build-game.yml'
       - '.github/workflows/renderer-migration-tests.yml'
   pull_request:
     paths:
       - 'experimental/renderer-migration/**'
       - 'source/main/gfx/SkyLightingMath.h'
+      - 'source/main/gfx/ShadowQualitySettings.h'
+      - 'source/main/gfx/ShadowManager.cpp'
+      - 'source/main/terrain/OgreTerrainPSSMMaterialGenerator.cpp'
+      - 'resources/managed_materials/shadows/pssm/on/pssm.cg'
+      - 'tools/windows/Add-LegacyDirectX.ps1'
+      - '.github/workflows/build-game.yml'
       - '.github/workflows/renderer-migration-tests.yml'
   workflow_dispatch:
 

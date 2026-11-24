@@ -55,3 +55,36 @@ g++ -std=c++11 -Wall -Wextra -Werror -pedantic test_mesh_frame.cpp -o test_mesh_
 All changes should remain on the `graphics-overhaul` branch until tested. This folder is isolated so it cannot break a normal RoR build.
 
 License: GPL-3.0-or-later, compatible with the upstream RoR project.
+
+
+
+## 2026-11-24 experimental lighting pass
+
+A separate, opt-in SkyX sun-lighting experiment now exists in the main RoR source:
+
+- `source/main/gfx/SkyLightingMath.h`: testable 0..1 channel clamping and smooth twilight fade.
+- `source/main/gfx/SkyXManager.cpp`: uses the pre-existing SkyX `mSunGradient` for the directional light when enabled; the legacy diffuse color remains the default.
+- `source/main/system/CVar.cpp` and `Application.{h,cpp}`: archived Boolean CVar `gfx_natural_sunlight`, default `false`.
+- `source/main/gui/panels/GUI_GameSettings.cpp`: Graphics tab checkbox visible when SkyX is selected.
+- `test_sky_lighting.cpp`: checks nighttime, daytime, twilight hue, monotonicity, non-finite inputs, and channel bounds.
+- `.github/workflows/renderer-migration-tests.yml`: standalone CMake tests on Linux and Windows when GitHub Actions is enabled.
+
+### How to try the lighting experiment
+
+Build RoR from the `graphics-overhaul` branch using its **normal** build instructions and dependencies (the full game is not built by the standalone CMake target). Open Graphics settings, select SkyX, then enable **Experimental natural sunlight (SkyX)**.
+
+The setting is OFF by default. Turning it off restores the legacy SkyX directional diffuse colors; the experiment does not modify the physics engine or existing map files. Visual results will vary across terrain materials and render backends.
+
+### What has been tested
+
+The standalone CMake suite was built and passed locally with GCC in Release mode. The two test executables cover deformable mesh frame calculations and sunlight interpolation. This validates the numerical helpers, **not** an entire RoR build, runtime integration, lighting appearance, driver compatibility, or an OGRE-Next migration.
+
+### Limitations and next checks
+
+- No physically-based shading, HDR, global illumination, or new render engine yet.
+- The sunset color is clamped to the range expected by the legacy renderer and is **not** physically calibrated.
+- RoR's built-in SkyX gradients, lightmaps, and mod-specific materials may behave differently.
+- Existing ambient lighting remains terrain-defined, so nighttime may retain ambient illumination.
+- Validate a full game build on Windows; visually compare the option on multiple terrains, vehicles, and DirectX/OpenGL renderers before deciding whether to enable it by default.
+- GitHub Actions may need to be enabled manually on a newly forked repository.
+

@@ -118,6 +118,10 @@ jobs:
           ninja install
         shell: cmd
 
+      - name: Bundle signed Microsoft DirectX 9 runtime DLLs
+        shell: pwsh
+        run: |
+          ./tools/windows/Add-LegacyDirectX.ps1 -DestinationDirectory './redist'
       - name: Upload build to itch.io
         env:
           BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}

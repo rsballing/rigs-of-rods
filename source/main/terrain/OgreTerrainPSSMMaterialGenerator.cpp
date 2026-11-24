@@ -415,6 +415,10 @@ void TerrainPSSMMaterialGenerator::SM2Profile::addTechnique(
         {
             TextureUnitState* tu = pass->createTextureUnitState();
             tu->setContentType(TextureUnitState::CONTENT_SHADOW);
+            // Manual PCF compares each sampled depth. Bilinear filtering
+            // interpolates depths before that comparison, producing false
+            // self-shadowing and bright/dark edge artifacts.
+            tu->setTextureFiltering(TFO_NONE);
             tu->setTextureAddressingMode(TextureUnitState::TAM_BORDER);
             tu->setTextureBorderColour(ColourValue::White);
         }

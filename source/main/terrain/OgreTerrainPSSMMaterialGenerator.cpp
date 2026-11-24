@@ -26,6 +26,8 @@ THE SOFTWARE.
 -----------------------------------------------------------------------------
 */
 #include "OgreTerrainPSSMMaterialGenerator.h"
+#include "Application.h"
+#include "ShadowQualitySettings.h"
 
 #include <Terrain/OgreTerrain.h>
 #include <OgreMaterialManager.h>
@@ -1315,11 +1317,12 @@ void TerrainPSSMMaterialGenerator::SM2Profile::ShaderHelperCg::generateFpFooter(
 void TerrainPSSMMaterialGenerator::SM2Profile::ShaderHelperCg::generateFpDynamicShadowsHelpers(
     const SM2Profile* prof, const Terrain* terrain, TechniqueType tt, Ogre::StringStream& outStream)
 {
-    // TODO make filtering configurable
+    // Quality 0-1 use 2x2 PCF; quality 2-3 use softer 3x3 PCF.
+    const int shadow_samples = RoR::ShadowQualitySettings::TerrainPcfWidth(RoR::App::gfx_shadow_quality->getInt());
     outStream <<
         "// Simple PCF \n"
         "// Number of samples in one dimension (square for total samples) \n"
-        "#define NUM_SHADOW_SAMPLES_1D 2.0 \n"
+        "#define NUM_SHADOW_SAMPLES_1D " << shadow_samples << ".0 \n"
         "#define SHADOW_FILTER_SCALE 1 \n"
 
         "#define SHADOW_SAMPLES NUM_SHADOW_SAMPLES_1D*NUM_SHADOW_SAMPLES_1D \n"

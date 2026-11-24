@@ -81,6 +81,8 @@ jobs:
   build-msvc:
     name: Windows build
     runs-on: windows-2025
+    permissions:
+      contents: write  # Required to create a GitHub prerelease on this fork
     env:
       BUILD_TOOLS_PATH: C:\apps\build-tools\
       CONAN_USER_HOME_SHORT: None
@@ -130,6 +132,41 @@ jobs:
         with:
           name: ror-win
           path: redist
+
+      # A development preview is only published after a successful full Windows
+      # build and installation. A ZIP is essential: RoR.exe needs DLLs/resources.
+      - name: Package and prerelease Windows graphics preview
+        if: github.event_name == 'push' && github.ref == 'refs/heads/graphics-overhaul'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $currentHead = (git ls-remote origin refs/heads/graphics-overhaul) -split '\\s+'
+          if ($currentHead[0] -ne $env:GITHUB_SHA) {
+            Write-Host "Skipping prerelease because newer commits exist."
+            exit 0
+          }
+
+          if (-not (Test-Path 'redist')) { throw "Missing game redist folder" }
+          $gameExe = Get-ChildItem 'redist' -Filter 'RoR.exe' -Recurse -File
+          if (-not $gameExe) { throw "No RoR.exe found in installed distribution" }
+
+          $archive = 'RoR-Graphics-Preview-Windows.zip'
+          Compress-Archive -Path 'redist\*' -DestinationPath $archive -CompressionLevel Optimal -Force
+          if (-not (Test-Path $archive)) { throw "Failed to create Windows release ZIP" }
+
+          $tag = "graphics-preview-$env:GITHUB_RUN_NUMBER"
+          $notes = @'
+          Experimental Rigs of Rods graphics preview for Windows.
+          
+          Extract the entire ZIP before launching RoR.exe. Do not run the executable by itself.
+          Built automatically from the graphics-overhaul branch; gameplay and visual appearance are not verified.
+          New source changes include configurable shadow distance, softer filtering, and opt-in natural SkyX lighting.
+          The original master branch is not changed.
+          '@
+          $notes | Set-Content -Path 'release-notes.md' -Encoding UTF8
+          gh release create $tag "./$archive" --repo $env:GITHUB_REPOSITORY --target $env:GITHUB_SHA --title "RoR Graphics Preview (Windows) #$env:GITHUB_RUN_NUMBER" --notes-file 'release-notes.md' --prerelease
 
       - name: Clean Conan pkgs
         run: conan cache clean "*" -sbd

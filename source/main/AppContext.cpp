@@ -237,6 +237,7 @@ bool AppContext::SetUpRendering()
 	std::string plugins_path = PathCombine(RoR::App::sys_process_dir->getStr(), "plugins.cfg");
 #endif
     LOG(fmt::format("[RoR|Startup|Rendering] Loading OGRE renderer plugins config '{}'.", plugins_path));
+    std::string renderer_plugin_errors;
     try
     {
         Ogre::ConfigFile cfg;
@@ -257,7 +258,17 @@ bool AppContext::SetUpRendering()
             {
                 m_ogre_root->loadPlugin(PathCombine(plugin_dir, plugin_filename));
             }
-            catch (Ogre::Exception&) {} // Logged by OGRE
+            catch (Ogre::Exception& e)
+            {
+                // Preserve the concrete DLL-loader error for Windows users.
+                // Generic "No render system plugin available" was masking
+                // missing D3DX9_43.dll / D3DCompiler_43.dll dependencies.
+                if (plugin_filename.find("RenderSystem_") != Ogre::String::npos)
+                {
+                    renderer_plugin_errors += fmt::format("{}: {}\\n",
+                        plugin_filename, e.getDescription());
+                }
+            }
         }
     }
     catch (Ogre::Exception& e)
@@ -285,7 +296,10 @@ bool AppContext::SetUpRendering()
             }
             else
             {
-                ErrorUtils::ShowError (_L("Startup error"), _L("No render system plugin available. Check your plugins.cfg"));
+                std::string info = _L("No render system plugin available. Check your plugins.cfg");
+                if (!renderer_plugin_errors.empty())
+                    info += std::string("\\n\\n") + renderer_plugin_errors;
+                ErrorUtils::ShowError (_L("Startup error"), info);
                 return false;
             }
         }

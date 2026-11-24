@@ -407,6 +407,7 @@ void GameSettings::DrawGraphicsSettings()
         if (App::gfx_shadow_type->getEnum<GfxShadowType>() == GfxShadowType::PSSM)
         {
             DrawGIntSlider(App::gfx_shadow_quality, _LC("GameSettings", "Shadow quality"), 0, 3);
+            DrawGIntSlider(App::gfx_shadow_distance, "PSSM shadow distance (restart terrain)", 150, 1500);
         }
     }
 

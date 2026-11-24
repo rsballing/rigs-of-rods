@@ -30,7 +30,7 @@ inline int TerrainPcfWidth(int quality)
     return quality >= 2 ? 3 : 2;
 }
 
-\n// Only suppress a vehicle's shadow when the user explicitly enables the
+// Only suppress a vehicle's shadow when the user explicitly enables the
 // optimization and the camera is inside that vehicle. Turning the setting
 // off must restore shadows rather than preserve a previously hidden state.
 inline bool ShouldCastVehicleShadows(bool optimize, bool inside)

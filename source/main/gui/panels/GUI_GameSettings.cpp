@@ -30,6 +30,7 @@
 #include "Language.h"
 #include "SoundManager.h"
 #include "Terrain.h"
+#include "Terrn2FileFormat.h"
 
 #ifdef USE_OPENAL
 #   include <alc.h>

@@ -47,6 +47,7 @@
 #include "GUIManager.h"
 #include "Console.h"
 #include "GfxActor.h"
+#include "ShadowQualitySettings.h"
 #include "InputEngine.h"
 #include "Language.h"
 #include "MeshObject.h"
@@ -3192,7 +3193,8 @@ void Actor::prepareInside(bool inside)
     // Restore shadow casting when the optimization is disabled. Previously,
     // turning it off after entering the cab left the entire vehicle without
     // shadows because SetCastShadows(true) was never called.
-    m_gfx_actor->SetCastShadows(!App::gfx_reduce_shadows->getBool() || !inside);
+    m_gfx_actor->SetCastShadows(ShadowQualitySettings::ShouldCastVehicleShadows(
+        App::gfx_reduce_shadows->getBool(), inside));
 }
 
 void Actor::toggleHeadlights()

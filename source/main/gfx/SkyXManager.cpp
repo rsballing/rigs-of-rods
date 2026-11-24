@@ -124,6 +124,13 @@ bool SkyXManager::UpdateSkyLight()
 		const SkyLightingMath::RGB sunlight = SkyLightingMath::DirectionalSunlight(
 		    point, {sunGradient.x, sunGradient.y, sunGradient.z});
 		mLight1->setDiffuseColour(sunlight.r, sunlight.g, sunlight.b);
+		// Optional sky fill lighting: use the existing SkyX ambient gradient
+		// as low-intensity global illumination, not a second direct light.
+		// This remains a simple ambient approximation, not true bounced GI.
+		App::GetGfxScene()->GetSceneManager()->setAmbientLight(Ogre::ColourValue(
+		    Ogre::Math::Clamp(ambientCol.x * 0.45f, 0.0f, 0.55f),
+		    Ogre::Math::Clamp(ambientCol.y * 0.45f, 0.0f, 0.55f),
+		    Ogre::Math::Clamp(ambientCol.z * 0.45f, 0.0f, 0.55f)));
 	}
 	else
 	{

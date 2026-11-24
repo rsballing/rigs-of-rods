@@ -1,4 +1,4 @@
-# Add the Microsoft-approved application-local x64 D3DX redistributables.
+# Bundle the Microsoft-approved x64 D3DX9, D3DX10 and D3DX11 redistributables.
 # Source: Microsoft.DXSDK.D3DX 9.29.952.8 (NuGet, published by Microsoft).
 # These proprietary DLLs belong in the release ZIP beside RoR.exe, NOT in
 # the GPL-licensed source tree. See the Microsoft package LICENSE and NOTICE.
@@ -29,7 +29,7 @@ try {
     [System.IO.Compression.ZipFile]::ExtractToDirectory($nupkg, $extracted)
 
     $runtimeFolder = Join-Path $extracted 'build/native/release/bin/x64'
-    foreach ($dll in @('D3DX9_43.dll', 'D3DCompiler_43.dll')) {
+    foreach ($dll in @('D3DX9_43.dll', 'D3DCompiler_43.dll', 'd3dx10_43.dll', 'd3dx11_43.dll')) {
         $source = Join-Path $runtimeFolder $dll
         if (-not (Test-Path $source -PathType Leaf)) {
             throw "Official package is missing $dll in the x64 release folder"
@@ -64,6 +64,8 @@ try {
     foreach ($filename in @(
         'D3DX9_43.dll',
         'D3DCompiler_43.dll',
+        'd3dx10_43.dll',
+        'd3dx11_43.dll',
         'OgreMain.dll',
         'RenderSystem_Direct3D9.dll',
         'RenderSystem_Direct3D11.dll',
@@ -92,7 +94,7 @@ try {
     if (-not (Test-Path (Join-Path $destination 'resources') -PathType Container)) {
         throw "Incomplete Windows distribution: missing resources directory"
     }
-    Write-Host "Windows distribution: legacy DirectX and renderer plugins verified."
+    Write-Host "Windows distribution: all four Microsoft x64 D3DX/Compiler DLLs and rendering plugins verified."
 }
 finally {
     Remove-Item -LiteralPath $work -Recurse -Force -ErrorAction SilentlyContinue

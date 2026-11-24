@@ -448,8 +448,8 @@ void GameSettings::DrawGraphicsSettings()
             // promising shadows the selected map cannot receive.
             if (App::app_state->getEnum<AppState>() == AppState::SIMULATION)
             {
-                Terrain* terrain = App::GetGameContext()->GetTerrain();
-                if (terrain != nullptr && terrain->GetDef() != nullptr &&
+                const TerrainPtr& terrain = App::GetGameContext()->GetTerrain();
+                if (terrain.GetRef() != nullptr && terrain->GetDef() != nullptr &&
                     !terrain->GetDef()->custom_material_name.empty())
                 {
                     ImGui::TextWrapped(

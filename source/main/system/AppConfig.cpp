@@ -315,6 +315,13 @@ void ParseHelper(CVar* cvar, std::string const & val)
         if (quality > 3) { quality = 3; }
         AssignHelper(App::gfx_shadow_quality, quality);
     }
+    else if (cvar->getName() == App::gfx_shadow_distance->getName())
+    {
+        int distance = Ogre::StringConverter::parseInt(val);
+        if (distance < 150) { distance = 150; }
+        if (distance > 1500) { distance = 1500; }
+        AssignHelper(App::gfx_shadow_distance, distance);
+    }
     else if (cvar->getName() == App::gfx_shadow_type->getName())
     {
         AssignHelper(App::gfx_shadow_type, (int)ParseGfxShadowType(val));

@@ -21,10 +21,12 @@ inline float DirectionalExtrusion(int distance)
     return static_cast<float>(ClampDistance(distance) - 51);
 }
 
-// Render the stock 2x2 PCF at low/medium; high/ultra use a 3x3
-// filter for smoother terrain-shadow transitions.
+// The quality slider controls terrain PCF samples: 2x2 at low/medium,
+// 3x3 at high, and 5x5 at ultra. Ultra is intentionally expensive (25 taps)
+// and can be disabled on older graphics cards by lowering shadow quality.
 inline int TerrainPcfWidth(int quality)
 {
+    if (quality >= 3) return 5;
     return quality >= 2 ? 3 : 2;
 }
 

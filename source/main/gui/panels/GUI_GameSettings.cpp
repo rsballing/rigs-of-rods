@@ -29,6 +29,7 @@
 #include "GUIUtils.h"
 #include "Language.h"
 #include "SoundManager.h"
+#include "Terrain.h"
 
 #ifdef USE_OPENAL
 #   include <alc.h>
@@ -441,6 +442,22 @@ void GameSettings::DrawGraphicsSettings()
         {
             DrawGIntSlider(App::gfx_shadow_quality, _LC("GameSettings", "Shadow quality"), 0, 3);
             DrawGIntSlider(App::gfx_shadow_distance, "PSSM shadow distance (restart terrain)", 150, 1500);
+
+            // The stock PSSM generator is bypassed for custom terrain
+            // materials. Explain the limitation instead of silently
+            // promising shadows the selected map cannot receive.
+            if (App::app_state->getEnum<AppState>() == AppState::SIMULATION)
+            {
+                Terrain* terrain = App::GetGameContext()->GetTerrain();
+                if (terrain != nullptr && terrain->GetDef() != nullptr &&
+                    !terrain->GetDef()->custom_material_name.empty())
+                {
+                    ImGui::TextWrapped(
+                        "This map uses a custom terrain material: dynamic PSSM "
+                        "shadows may not appear on its ground until the "
+                        "material's shader supports shadow reception.");
+                }
+            }
         }
     }
 

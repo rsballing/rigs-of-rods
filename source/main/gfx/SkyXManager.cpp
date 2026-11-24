@@ -29,6 +29,7 @@
 #include "HydraxWater.h"
 #include "Terrain.h"
 #include "TerrainGeometryManager.h"
+#include "SkyLightingMath.h"
 
 using namespace Ogre;
 using namespace RoR;

@@ -32,9 +32,14 @@ If needed, obtain additional content packs from the RoR official repository/foru
 
 1. Extract the *entire* Windows release ZIP, not just `RoR.exe`.
 2. Choose Direct3D9 if that is the known working renderer for your GPU. The branch also enables available Direct3D11 and OpenGL render plugins in `plugins.cfg`. You should not need to edit `plugins.cfg` for the new release if all files are present and the fix is working.
-3. In Settings > Graphics, select PSSM, set shadow quality to 2 or 3, and disable `Shadow optimizations`. Reload terrain when changing the PSSM distance or quality.
-4. On a SkyX-enabled terrain, try **Experimental natural sunlight (SkyX)** ON versus OFF. Default is OFF.
-5. Compare the same terrain, vehicle, time of day, and camera settings with the official version. Several custom terrain materials do not implement PSSM shadow reception.
-6. Report rendering glitches, missing shadows, shader compiler errors, and FPS differences with screenshots and `RoR.log`.
+3. In **Settings > Graphics**, press **Apply experimental graphics preset**. This sets PSSM shadows, High shadow quality (3×3 PCF), 700-unit shadow distance, and disables Shadow optimizations. On a terrain already using SkyX, it also turns on experimental natural sunlight; it intentionally does not force SkyX on incompatible maps. **Reload the terrain or restart RoR** to recreate its PSSM cascade textures and generated materials. (The preview build containing this button must have compiled successfully.)
+4. For smoother shadows, select **Ultra** quality (5×5 PCF, 25 depth samples). This costs substantially more GPU time than **High** (3×3, 9 samples) and Low/Medium (2×2, 4 samples). Try High first.
+5. On a SkyX-enabled terrain, toggle **Experimental natural sunlight (SkyX)** ON versus OFF, especially near sunset. The effect is optional and will not be apparent on maps that use another sky mode.
+6. Compare the **same terrain, vehicle, time of day, renderer, and camera angle** with the official version. Some custom terrain shaders bypass the built-in PSSM receiver and cannot receive dynamic shadows without changes to those materials. The content pack itself does not contain upgraded lighting code.
+7. Report rendering glitches, missing shadows, shader compiler errors, and FPS differences with screenshots and `RoR.log`.
 
-The preview was compiled by GitHub Actions; source-level unit tests are not a substitute for an in-game smoke test.
+### Renderer tests and limitations
+
+The Windows GitHub Actions workflow compiles and links the complete C++ game and produces a portable release. The independent renderer regression workflow compiles pure C++ policy tests on Windows/Linux and runs static checks for shadow-source invariants; these do **not** compile all generated Cg/HLSL shaders on a GPU.
+
+The branch now includes fixes for projected shadow-depth comparisons, cascade far-limit clipping, stale shadow-split setup, vehicle shadow-state restoration, and point-sampled manual PCF. These are incremental corrections to OGRE 1.x, **not** complete physically based rendering, global illumination, or a new engine. In-game visual quality and performance still require direct testing on representative maps and hardware.

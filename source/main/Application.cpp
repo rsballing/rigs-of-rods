@@ -254,6 +254,7 @@ CVar* gfx_declutter_map;
 CVar* gfx_envmap_enabled;
 CVar* gfx_envmap_rate;
 CVar* gfx_shadow_quality;
+CVar* gfx_shadow_distance;
 CVar* gfx_natural_sunlight;
 CVar* gfx_skidmarks_mode;
 CVar* gfx_sight_range;

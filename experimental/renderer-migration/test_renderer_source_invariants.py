@@ -35,6 +35,13 @@ class RendererSourceContracts(unittest.TestCase):
         self.assertIn("else if (uv.z <= pssmSplitPoints.w)", shader)
         self.assertIn("shadowing = 1.0f;", shader)
 
+    def test_depth_samplers_use_point_filtering_for_manual_pcf(self):
+        generator = load("source/main/terrain/OgreTerrainPSSMMaterialGenerator.cpp")
+        self.assertIn("tu->setTextureFiltering(TFO_NONE);", generator)
+        material = load("resources/managed_materials/shadows/pssm/on/shadows.material")
+        self.assertEqual(3, material.count("filtering point point none"))
+        self.assertNotIn("filtering anisotropic anisotropic none", material)
+
     def test_quality_matches_shader_kernel_policy(self):
         header = load("source/main/gfx/ShadowQualitySettings.h")
         self.assertIn("if (quality >= 3) return 5;", header)

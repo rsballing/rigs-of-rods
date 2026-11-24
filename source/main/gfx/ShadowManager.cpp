@@ -19,6 +19,7 @@
 */
 
 #include "ShadowManager.h"
+#include "ShadowQualitySettings.h"
 
 #include "Actor.h"
 #include "CameraManager.h"

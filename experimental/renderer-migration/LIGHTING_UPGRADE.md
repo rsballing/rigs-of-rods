@@ -1,0 +1,42 @@
+# RoR graphics upgrade: shadow coverage + sky lighting (experimental)
+
+This is an **incremental OGRE 1.x lighting improvement**, not an OGRE-Next port, not ray-traced GI, and not a complete PBR renderer. Changes are on `graphics-overhaul`; `master` is unchanged.
+
+## Implemented in the branch
+
+### Configurable directional shadow distance
+- New archived integer CVar `gfx_shadow_distance`, default **350** world units, valid range **150–1500**.
+- Graphics page: **PSSM shadow distance (restart terrain)**. The setting is read when PSSM shadows are configured; reload the terrain after changing it.
+- The OGRE `SceneManager` PSSM far distance and directional extrusion are derived from the same distance.
+- Higher distances increase coverage but distribute three cascades over a larger area, so near/far quality may suffer. Use 500–900 before trying 1500. Beware VRAM/graphics performance.
+
+### Softening the terrain shader at high quality
+- OGRE's stock-style terrain PSSM material generator uses 2x2 four-sample PCF on low/medium shadow quality (0–1).
+- For high/ultra (2–3), the generated shader now uses a 3x3 nine-sample PCF kernel. This makes near shadow boundaries less blocky at the cost of up to five additional depth fetches per shaded terrain pixel.
+- Requires terrain material/shader regeneration; reload the terrain after changing the quality option.
+- Other RoR shader paths have a separate 2x2 PCF radius broadened from 0.3 to 0.75 texels in an earlier pass. This is an approximation; it is not contact-hardening sunlight.
+
+### Optional environmental fill light
+- When **Experimental natural sunlight (SkyX)** is enabled, the sun uses SkyX's sun gradient and dusk visibility curve; a low-intensity global ambient contribution is derived from SkyX's ambient gradient.
+- The original directional diffuse and 0.35 ambient are restored when the setting is toggled off. Defaults remain unchanged (experiment off).
+- This is simple sky fill, not ambient occlusion, probe-based irradiance, or bounced global illumination. Sunlight, sky conditions, and custom materials may respond differently.
+
+### Test coverage
+- A new standalone header `source/main/gfx/ShadowQualitySettings.h` contains the pure clamp, extrusion, and PCF width policy.
+- `experimental/renderer-migration/test_shadow_quality.cpp` checks boundary values, legacy defaults, extended ranges, and quality tiers.
+- `experimental/renderer-migration/CMakeLists.txt` registers the new test. Existing GitHub Actions workflow runs standalone tests on Linux and Windows when Actions are enabled.
+
+## Recommended first in-game comparison
+1. Build the `graphics-overhaul` branch and use **PSSM**, **Shadow quality 2**, **Shadow optimizations OFF**.
+2. Compare distance 350 and 700 on the same map, camera angle, time of day, and vehicle. Reload the terrain after each adjustment.
+3. Test sunlight OFF and ON on a SkyX terrain, especially morning and evening.
+4. Compare a normal `*.otc` terrain with a custom-material `*.terrn2` terrain. Custom material paths bypass the built-in terrain PSSM generator and may have no dynamic shadow reception unless their own shaders implement it.
+5. Check inside and outside vehicles; some actor meshes have shadow casting disabled by optimizations.
+6. Compare near vs far shadow detail, terrain shader errors, shadow acne, detached shadows, and frame rate.
+
+## Important limitations
+
+- The full RoR game has **not** been compiled or launched as part of this upgrade; the local environment lacks OGRE build dependencies and a game/graphics runtime. Source integration and visual quality must be verified with the built application.
+- The pure shadow-quality settings logic compiled and passed locally under GCC, including an AddressSanitizer/UndefinedBehaviorSanitizer run. These tests do not compile OGRE integration or shader programs.
+- Custom map material support, stable CSM splits across all cameras, complete vehicle casting and terrain receiving, PBR, HDR tone mapping, SSAO, SSR, and true GI are **not finished**.
+- A successful lighting overhaul also needs screenshots and frame-time measurements against baseline RoR on representative maps.

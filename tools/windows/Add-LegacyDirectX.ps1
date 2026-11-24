@@ -60,8 +60,7 @@ try {
         'These DLLs are not licensed as part of Rigs of Rods GPL source code.'
     ) | Set-Content -Path (Join-Path $legalDir 'README.txt') -Encoding UTF8
 
-    # Validate the actual extracted portable game contents before publishing.
-    # This catches the exact missing-renderer startup failure seen on Win11.
+    # Verify portable Windows package before uploading or publishing it.
     foreach ($filename in @(
         'D3DX9_43.dll',
         'D3DCompiler_43.dll',
@@ -76,28 +75,24 @@ try {
             throw "Incomplete Windows distribution: missing $filename"
         }
     }
-    $configLines = @(Get-Content -LiteralPath (Join-Path $destination 'plugins.cfg'))
-    if (-not ($configLines | Where-Object { $_ -match '^\s*PluginFolder\s*=\s*\.\s*
-finally {
-    Remove-Item -LiteralPath $work -Recurse -Force -ErrorAction SilentlyContinue
-}
- })) {
-        throw "plugins.cfg must use PluginFolder=., resolved beside RoR.exe"
+    $configLines = @(Get-Content -LiteralPath (Join-Path $destination 'plugins.cfg') |
+        ForEach-Object { $_.Trim() })
+    if ($configLines -notcontains 'PluginFolder=.') {
+        throw "plugins.cfg must use PluginFolder=. resolved beside RoR.exe"
     }
-    foreach ($renderer in @('RenderSystem_Direct3D9', 'RenderSystem_Direct3D11', 'RenderSystem_GL')) {
-        $rendererLine = '^\s*Plugin\s*=\s*' + [regex]::Escape($renderer) + '\s*
-finally {
-    Remove-Item -LiteralPath $work -Recurse -Force -ErrorAction SilentlyContinue
-}
-
-        if (-not ($configLines | Where-Object { $_ -match $rendererLine })) {
-            throw "Configured render system is not enabled: $renderer"
+    foreach ($renderer in @(
+        'RenderSystem_Direct3D9',
+        'RenderSystem_Direct3D11',
+        'RenderSystem_GL'
+    )) {
+        if ($configLines -notcontains ("Plugin=" + $renderer)) {
+            throw "Configured renderer plugin not enabled: $renderer"
         }
     }
     if (-not (Test-Path (Join-Path $destination 'resources') -PathType Container)) {
-        throw "Incomplete Windows distribution: resources/ is missing"
+        throw "Incomplete Windows distribution: missing resources directory"
     }
-    Write-Host "Verified Direct3D9/11/OpenGL plugins, legacy DirectX DLLs, and resources."
+    Write-Host "Windows distribution: legacy DirectX and renderer plugins verified."
 }
 finally {
     Remove-Item -LiteralPath $work -Recurse -Force -ErrorAction SilentlyContinue

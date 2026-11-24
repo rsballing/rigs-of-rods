@@ -543,11 +543,17 @@ if (NOT WIN32)
     set(CFG_COMMENT_RENDERSYSTEM_D3D9 "# ")
 endif ()
 
+# Windows packages contain Direct3D9, Direct3D11 and OpenGL plugins.
+# Enable multiple backends so a missing legacy DirectX runtime does not
+# leave the player with "No render system plugin available".
 if (WIN32)
-    set(CFG_COMMENT_RENDERSYSTEM_GL "# ")
+    set(CFG_COMMENT_RENDERSYSTEM_GL "")
+    set(CFG_COMMENT_RENDERSYSTEM_D3D11 "")
+else ()
+    set(CFG_COMMENT_RENDERSYSTEM_D3D11 "# ")
 endif ()
 
-set(CFG_COMMENT_RENDERSYSTEM_D3D11 "# ")
+# The packaged Windows OGRE currently does not ship RenderSystem_GL3Plus.
 set(CFG_COMMENT_RENDERSYSTEM_GL3PLUS "# ")
 
 if (DEFINED OGRE_PLUGIN_DIR AND NOT WIN32)

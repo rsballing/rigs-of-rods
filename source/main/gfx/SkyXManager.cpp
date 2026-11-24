@@ -136,6 +136,8 @@ bool SkyXManager::UpdateSkyLight()
 	{
 		// Legacy lighting, unchanged when the option is disabled.
 		mLight1->setDiffuseColour(ambientCol.x, ambientCol.y, ambientCol.z);
+		// Restore the original SkyX ambient light immediately when toggled off.
+		App::GetGfxScene()->GetSceneManager()->setAmbientLight(Ogre::ColourValue(0.35f, 0.35f, 0.35f));
 	}
 	mLight1->setPosition(100,100,100);
 

@@ -98,6 +98,9 @@ void ShadowManager::processPSSM()
 {
     App::GetGfxScene()->GetSceneManager()->setShadowTechnique(Ogre::SHADOWTYPE_TEXTURE_ADDITIVE_INTEGRATED);
 
+    // Re-read quality when PSSM is configured, including after terrain reloads.
+    PSSM_Shadows.Quality = App::gfx_shadow_quality->getInt();
+
     // Expand the cascade range when requested; keep the 350-unit default.
     const int shadow_distance = ShadowQualitySettings::ClampDistance(App::gfx_shadow_distance->getInt());
     App::GetGfxScene()->GetSceneManager()->setShadowDirectionalLightExtrusionDistance(ShadowQualitySettings::DirectionalExtrusion(shadow_distance));
@@ -143,21 +146,24 @@ void ShadowManager::processPSSM()
 
     if (!PSSM_Shadows.mPSSMSetup)
     {
-        // shadow camera setup
-        Ogre::PSSMShadowCameraSetup* pssmSetup = new Ogre::PSSMShadowCameraSetup();
-
-        pssmSetup->calculateSplitPoints(3, App::GetCameraManager()->GetCamera()->getNearClipDistance(), App::GetGfxScene()->GetSceneManager()->getShadowFarDistance(), PSSM_Shadows.lambda);
-        pssmSetup->setSplitPadding(App::GetCameraManager()->GetCamera()->getNearClipDistance());
-
-        pssmSetup->setOptimalAdjustFactor(0, -1);
-        pssmSetup->setOptimalAdjustFactor(1, -1);
-        pssmSetup->setOptimalAdjustFactor(2, -1);
-
-        PSSM_Shadows.mPSSMSetup.bind(pssmSetup);
-
-        //Send split info to managed materials
-        setManagedMaterialSplitPoints(pssmSetup->getSplitPoints());
+        PSSM_Shadows.mPSSMSetup.bind(new Ogre::PSSMShadowCameraSetup());
     }
+
+    // Recalculate boundaries on reconfigure; otherwise a retained manager
+    // continues using stale split distances despite updated user settings.
+    Ogre::PSSMShadowCameraSetup* pssmSetup =
+        static_cast<Ogre::PSSMShadowCameraSetup*>(PSSM_Shadows.mPSSMSetup.get());
+    const Ogre::Real near_clip = App::GetCameraManager()->GetCamera()->getNearClipDistance();
+    pssmSetup->calculateSplitPoints(3, near_clip,
+        App::GetGfxScene()->GetSceneManager()->getShadowFarDistance(),
+        PSSM_Shadows.lambda);
+    pssmSetup->setSplitPadding(near_clip);
+    pssmSetup->setOptimalAdjustFactor(0, -1);
+    pssmSetup->setOptimalAdjustFactor(1, -1);
+    pssmSetup->setOptimalAdjustFactor(2, -1);
+
+    // Supply near, two boundaries, and far for the managed material shader.
+    setManagedMaterialSplitPoints(pssmSetup->getSplitPoints());
     App::GetGfxScene()->GetSceneManager()->setShadowCameraSetup(PSSM_Shadows.mPSSMSetup);
 }
 
@@ -183,9 +189,10 @@ void ShadowManager::updateTerrainMaterial(Ogre::TerrainPSSMMaterialGenerator::SM
 
 void ShadowManager::setManagedMaterialSplitPoints(Ogre::PSSMShadowCameraSetup::SplitPointList splitPointList)
 {
-    Ogre::Vector4 splitPoints;
+    Ogre::Vector4 splitPoints(0, 0, 0, 0);
 
-    for (int i = 0; i < 3; ++i)
+    // 3 cascades yield 4 endpoints (near, split1, split2, far).
+    for (int i = 0; i < 4; ++i)
         splitPoints[i] = splitPointList[i];
 
     GpuSharedParametersPtr p = GpuProgramManager::getSingleton().getSharedParameters("pssm_params");

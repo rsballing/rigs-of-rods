@@ -579,10 +579,11 @@ void TerrainPSSMMaterialGenerator::SM2Profile::ShaderHelper::defaultFpParams(
         {
             PSSMShadowCameraSetup* pssm = prof->getReceiveDynamicShadowsPSSM();
             numTextures = pssm->getSplitCount();
-            Vector4 splitPoints;
+            Vector4 splitPoints(0, 0, 0, 0);
             const PSSMShadowCameraSetup::SplitPointList& splitPointList = pssm->getSplitPoints();
-            // Populate from split point 1, not 0, since split 0 isn't useful (usually 0)
-            for (uint i = 1; i < numTextures; ++i)
+            // Split 0 is the near plane. Pack each cascade end, including
+            // the far boundary, so the shader can reject out-of-range pixels.
+            for (uint i = 1; i <= numTextures && i <= 4; ++i)
             {
                 splitPoints[i - 1] = splitPointList[i];
             }
@@ -1337,7 +1338,7 @@ void TerrainPSSMMaterialGenerator::SM2Profile::ShaderHelperCg::generateFpDynamic
         outStream <<
             "float calcDepthShadow(sampler2D shadowMap, float4 uv, float invShadowMapSize) \n"
             "{ \n"
-            "	// 4-sample PCF \n"
+            "	// Quality-dependent PCF \n"
 
             "	float shadow = 0.0; \n"
             "	float offset = (NUM_SHADOW_SAMPLES_1D/2 - 0.5) * SHADOW_FILTER_SCALE; \n"
@@ -1349,7 +1350,7 @@ void TerrainPSSMMaterialGenerator::SM2Profile::ShaderHelperCg::generateFpDynamic
             "			// to avoid gradient issues inside loops \n"
             "			newUV = newUV / newUV.w; \n"
             "			float depth = tex2D(shadowMap, newUV.xy, 1, 1).x; \n"
-            "			if (depth >= 1 || depth >= uv.z)\n"
+            "			if (depth >= 1 || depth >= newUV.z)\n"
             "				shadow += 1.0;\n"
             "		} \n"
 
@@ -1397,8 +1398,12 @@ void TerrainPSSMMaterialGenerator::SM2Profile::ShaderHelperCg::generateFpDynamic
         outStream << "\n"
             "	float4 pssmSplitPoints, float camDepth) \n"
             "{ \n"
-            "	float shadow; \n"
-            "	// calculate shadow \n";
+            "\tfloat shadow = 1.0; \\n"
+            // Beyond the final split, shadow textures contain no coverage.
+            // Treat those pixels as fully lit rather than smearing the last map.
+            "\tif (camDepth > pssmSplitPoints." << ShaderHelper::getChannel(numTextures - 1)
+            << ") return 1.0; \\n"
+            "\t// calculate shadow \\n";
 
         for (uint i = 0; i < numTextures; ++i)
         {

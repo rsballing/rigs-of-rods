@@ -265,7 +265,7 @@ bool AppContext::SetUpRendering()
                 // missing D3DX9_43.dll / D3DCompiler_43.dll dependencies.
                 if (plugin_filename.find("RenderSystem_") != Ogre::String::npos)
                 {
-                    renderer_plugin_errors += fmt::format("{}: {}\\n",
+                    renderer_plugin_errors += fmt::format("{}: {}\n",
                         plugin_filename, e.getDescription());
                 }
             }
@@ -298,7 +298,7 @@ bool AppContext::SetUpRendering()
             {
                 std::string info = _L("No render system plugin available. Check your plugins.cfg");
                 if (!renderer_plugin_errors.empty())
-                    info += std::string("\\n\\n") + renderer_plugin_errors;
+                    info += std::string("\n\n") + renderer_plugin_errors;
                 ErrorUtils::ShowError (_L("Startup error"), info);
                 return false;
             }

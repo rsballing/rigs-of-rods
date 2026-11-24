@@ -53,8 +53,11 @@ void ShadowManager::loadConfiguration()
 
 int ShadowManager::updateShadowTechnique()
 {
-    float scoef = 0.5;
-    App::GetGfxScene()->GetSceneManager()->setShadowColour(Ogre::ColourValue(0.563 + scoef, 0.578 + scoef, 0.625 + scoef));
+    // Keep the shadow tint within the normal [0, 1] colour range.
+    // The previous +0.5 offset pushed each channel above 1.0, which
+    // could wash out shadows in techniques that use this colour.
+    // Integrated PSSM receivers may use shader-defined shadow tints instead.
+    App::GetGfxScene()->GetSceneManager()->setShadowColour(Ogre::ColourValue(0.563f, 0.578f, 0.625f));
     App::GetGfxScene()->GetSceneManager()->setShowDebugShadows(false);
 
     if (App::gfx_shadow_type->getEnum<GfxShadowType>() == GfxShadowType::PSSM)

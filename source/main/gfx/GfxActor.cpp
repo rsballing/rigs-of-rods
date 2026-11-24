@@ -3331,13 +3331,12 @@ void RoR::GfxActor::UpdateFlares(float dt, bool is_player)
 
 void RoR::GfxActor::SetCastShadows(bool value)
 {
-    // Cab mesh
-    if (m_cab_scene_node != nullptr)
-    {
-        static_cast<Ogre::Entity*>(m_cab_scene_node->getAttachedObject(0))->setCastShadows(value);
-    }
+    // This can now be called from the Graphics settings for every loaded
+    // vehicle, including vehicles without a cab, wheels, or beam meshes.
+    // Never assume a scene node exists or has an attached renderable.
+    if (m_cab_entity != nullptr)
+        m_cab_entity->setCastShadows(value);
 
-    // Props
     for (Prop& prop: m_props)
     {
         if (prop.pp_mesh_obj != nullptr && prop.pp_mesh_obj->getEntity())
@@ -3346,22 +3345,22 @@ void RoR::GfxActor::SetCastShadows(bool value)
             prop.pp_wheel_mesh_obj->getEntity()->setCastShadows(value);
     }
 
-    // Wheels
     for (WheelGfx& wheel: m_wheels)
     {
-        static_cast<Ogre::Entity*>(wheel.wx_scenenode->getAttachedObject(0))->setCastShadows(value);
+        if (wheel.wx_scenenode != nullptr && wheel.wx_scenenode->numAttachedObjects() > 0)
+            wheel.wx_scenenode->getAttachedObject(0)->setCastShadows(value);
     }
 
-    // Softbody beams
     for (BeamGfx& rod: m_gfx_beams)
     {
-        static_cast<Ogre::Entity*>(rod.rod_scenenode->getAttachedObject(0))->setCastShadows(value);
+        if (rod.rod_scenenode != nullptr && rod.rod_scenenode->numAttachedObjects() > 0)
+            rod.rod_scenenode->getAttachedObject(0)->setCastShadows(value);
     }
 
-    // Flexbody meshes
     for (FlexBody* fb: m_flexbodies)
     {
-        fb->setFlexbodyCastShadow(value);
+        if (fb != nullptr)
+            fb->setFlexbodyCastShadow(value);
     }
 }
 

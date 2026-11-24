@@ -96,7 +96,7 @@ class RendererSourceContracts(unittest.TestCase):
         workflow = load(".github/workflows/build-game.yml")
         script = load("tools/windows/Add-LegacyDirectX.ps1")
         self.assertIn("Get-AuthenticodeSignature", script)
-        for dll in ("D3DX9_43.dll", "D3DCompiler_43.dll"):
+        for dll in ("D3DX9_43.dll", "D3DCompiler_43.dll", "d3dx10_43.dll", "d3dx11_43.dll"):
             self.assertIn(dll, script)
         for step in (
             "Bundle signed Microsoft DirectX 9 runtime DLLs",

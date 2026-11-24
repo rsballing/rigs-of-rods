@@ -396,7 +396,32 @@ void GameSettings::DrawUiSettings()
 
 void GameSettings::DrawGraphicsSettings()
 {
+    auto restore_actor_shadows = []()
+    {
+        if (App::app_state->getEnum<AppState>() != AppState::SIMULATION)
+            return;
+        for (ActorPtr const& actor : App::GetGameContext()->GetActorManager()->GetActors())
+        {
+            if (actor.GetRef() && actor->GetGfxActor())
+                actor->GetGfxActor()->SetCastShadows(true);
+        }
+    };
+
     ImGui::TextDisabled("%s", _LC("GameSettings", "Video settings"));
+
+    // One-click baseline for testing the preview's actual graphics changes.
+    // Do not force the SkyX mode on maps which do not support its configuration.
+    if (ImGui::Button("Apply experimental graphics preset"))
+    {
+        App::gfx_shadow_type->setVal(static_cast<int>(GfxShadowType::PSSM));
+        App::gfx_shadow_quality->setVal(2); // 3x3 PCF; Ultra 5x5 is expensive.
+        App::gfx_shadow_distance->setVal(700);
+        App::gfx_reduce_shadows->setVal(false);
+        if (App::gfx_sky_mode->getEnum<GfxSkyMode>() == GfxSkyMode::SKYX)
+            App::gfx_natural_sunlight->setVal(true);
+        restore_actor_shadows();
+    }
+    ImGui::TextDisabled("Reload terrain or restart the game to apply PSSM changes.");
 
     DrawGCombo(App::gfx_flares_mode, _LC("GameSettings", "Light sources"),
         m_combo_items_light_sources.c_str());
@@ -407,17 +432,10 @@ void GameSettings::DrawGraphicsSettings()
     if (App::gfx_shadow_type->getEnum<GfxShadowType>() != GfxShadowType::NONE)
     {
         if (DrawGCheckbox(App::gfx_reduce_shadows, _LC("GameSettings", "Shadow optimizations"))
-            && !App::gfx_reduce_shadows->getBool()
-            && App::app_state->getEnum<AppState>() == AppState::SIMULATION)
+            && !App::gfx_reduce_shadows->getBool())
         {
-            // Restore casting immediately for every active actor. Without
-            // this, actors hidden by the cab-camera optimization could keep
-            // their shadow flags disabled until the next camera transition.
-            for (ActorPtr const& actor : App::GetGameContext()->GetActorManager()->GetActors())
-            {
-                if (actor.GetRef() && actor->GetGfxActor())
-                    actor->GetGfxActor()->SetCastShadows(true);
-            }
+            // Restore casting immediately; don't wait for a camera transition.
+            restore_actor_shadows();
         }
         if (App::gfx_shadow_type->getEnum<GfxShadowType>() == GfxShadowType::PSSM)
         {

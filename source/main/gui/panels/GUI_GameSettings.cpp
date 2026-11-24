@@ -413,6 +413,11 @@ void GameSettings::DrawGraphicsSettings()
     DrawGCombo(App::gfx_sky_mode, _LC("GameSettings", "Sky gfx"),
         m_combo_items_sky_mode.c_str());
 
+    if (App::gfx_sky_mode->getEnum<GfxSkyMode>() == GfxSkyMode::SKYX)
+    {
+        DrawGCheckbox(App::gfx_natural_sunlight, "Experimental natural sunlight (SkyX)");
+    }
+
     if (App::gfx_sky_mode->getEnum<GfxSkyMode>() != GfxSkyMode::SKYX)
     {
         DrawGIntSlider(App::gfx_sight_range, _LC("GameSettings", "Sight range (meters)"), 100, 5000);

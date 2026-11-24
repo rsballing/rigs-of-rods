@@ -81,7 +81,7 @@ float shadowPCF(sampler2D shadowMap, float4 shadowMapPos, float2 offset)
 {
 	shadowMapPos = shadowMapPos / shadowMapPos.w;
 	float2 uv = shadowMapPos.xy;
-	float3 o = float3(offset, -offset.x) * 0.3f;
+	float3 o = float3(offset, -offset.x) * 0.75f;
 
 	//return	(shadowMapPos.z <= tex2D(shadowMap, uv.xy).r) ? 1 : 0;
 	// Note: We using 2x2 PCF. Good enough and is alot faster.
@@ -89,7 +89,7 @@ float shadowPCF(sampler2D shadowMap, float4 shadowMapPos, float2 offset)
 	c +=		(shadowMapPos.z <= tex2D(shadowMap, uv.xy + o.xy).r) ? 1 : 0; //bottomright
 	c +=		(shadowMapPos.z <= tex2D(shadowMap, uv.xy + o.zy).r) ? 1 : 0; //bottomleft
 	c +=		(shadowMapPos.z <= tex2D(shadowMap, uv.xy - o.zy).r) ? 1 : 0; // topright
-	return c / 5;
+	return c / 4;
 }
 
 // to put it simply, this does 100% per pixel diffuse lighting

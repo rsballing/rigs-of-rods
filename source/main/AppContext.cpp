@@ -242,6 +242,14 @@ bool AppContext::SetUpRendering()
         Ogre::ConfigFile cfg;
         cfg.load(plugins_path);
         std::string plugin_dir = cfg.getSetting("PluginFolder", /*section=*/"", /*default=*/App::sys_process_dir->getStr());
+        // OGRE resolves relative plugin paths against the current working
+        // directory, which may differ from the executable directory when
+        // launched through a shortcut or directly from File Explorer.
+        // The distributed plugins.cfg uses PluginFolder=.; resolve that
+        // explicitly to the directory containing RoR.exe.
+        if (plugin_dir.empty() || plugin_dir == ".")
+            plugin_dir = App::sys_process_dir->getStr();
+        LOG(fmt::format("[RoR|Startup|Rendering] Loading renderer plugins from folder '{}'", plugin_dir));
         Ogre::StringVector plugins = cfg.getMultiSetting("Plugin");
         for (Ogre::String plugin_filename: plugins)
         {

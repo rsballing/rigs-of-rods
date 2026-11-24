@@ -59,6 +59,13 @@ class RendererSourceContracts(unittest.TestCase):
         self.assertIn("ShadowQualitySettings::TerrainPcfWidth(", generator)
         self.assertIn("SHADOW_SAMPLES NUM_SHADOW_SAMPLES_1D*NUM_SHADOW_SAMPLES_1D", generator)
 
+    def test_vehicle_shadow_toggle_checks_optional_meshes(self):
+        gfx_actor = load("source/main/gfx/GfxActor.cpp")
+        self.assertIn("if (m_cab_entity != nullptr)", gfx_actor)
+        self.assertIn("wheel.wx_scenenode->numAttachedObjects() > 0", gfx_actor)
+        self.assertIn("rod.rod_scenenode->numAttachedObjects() > 0", gfx_actor)
+        self.assertIn("if (fb != nullptr)", gfx_actor)
+
     def test_vehicle_shadows_restore_when_optimization_disabled(self):
         actor = load("source/main/physics/Actor.cpp")
         ui = load("source/main/gui/panels/GUI_GameSettings.cpp")

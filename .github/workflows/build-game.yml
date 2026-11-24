@@ -142,7 +142,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           $ErrorActionPreference = 'Stop'
-          $currentHead = (git ls-remote origin refs/heads/graphics-overhaul) -split '\\s+'
+          $currentHead = (git ls-remote origin refs/heads/graphics-overhaul) -split '\s+'
           if ($currentHead[0] -ne $env:GITHUB_SHA) {
             Write-Host "Skipping prerelease because newer commits exist."
             exit 0

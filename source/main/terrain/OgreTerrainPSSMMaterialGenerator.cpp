@@ -1318,7 +1318,7 @@ void TerrainPSSMMaterialGenerator::SM2Profile::ShaderHelperCg::generateFpFooter(
 void TerrainPSSMMaterialGenerator::SM2Profile::ShaderHelperCg::generateFpDynamicShadowsHelpers(
     const SM2Profile* prof, const Terrain* terrain, TechniqueType tt, Ogre::StringStream& outStream)
 {
-    // Quality 0-1 use 2x2 PCF; quality 2-3 use softer 3x3 PCF.
+    // Quality 0-1: 2x2 PCF (4 taps); 2: 3x3 (9); 3: 5x5 (25).
     const int shadow_samples = RoR::ShadowQualitySettings::TerrainPcfWidth(RoR::App::gfx_shadow_quality->getInt());
     outStream <<
         "// Simple PCF \n"

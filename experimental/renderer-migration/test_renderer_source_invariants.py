@@ -85,6 +85,13 @@ class RendererSourceContracts(unittest.TestCase):
         self.assertIn("PSSM_Shadows.Quality = App::gfx_shadow_quality->getInt();", cpp)
         self.assertIn("pssmSetup->calculateSplitPoints(3, near_clip,", cpp)
 
+    def test_renderer_startup_diagnoses_missing_plugin_dependencies(self):
+        app = load("source/main/AppContext.cpp")
+        self.assertIn("renderer_plugin_errors += fmt::format", app)
+        self.assertIn('plugin_filename.find("RenderSystem_")', app)
+        self.assertIn("if (!renderer_plugin_errors.empty())", app)
+        self.assertIn("No render system plugin available", app)
+
     def test_windows_package_adds_legal_directx_dlls(self):
         workflow = load(".github/workflows/build-game.yml")
         script = load("tools/windows/Add-LegacyDirectX.ps1")

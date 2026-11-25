@@ -27,6 +27,17 @@ class RendererSourceContracts(unittest.TestCase):
         self.assertIn("camDepth > pssmSplitPoints.", cpp)
         self.assertIn("ShaderHelper::getChannel(numTextures - 1)", cpp)
 
+    def test_vehicle_shadow_receiver_normalizes_interpolated_normals(self):
+        shader = load("resources/managed_materials/shadows/pssm/on/pssm.cg")
+        receiver = shader.split("void shadow_receiver_ps(", 1)[1]
+        self.assertIn(
+            "surfaceNormal = normal * rsqrt(max(dot(normal, normal), 1e-8f));",
+            receiver,
+        )
+        self.assertIn("dot(surfaceNormal, lightVec)", receiver)
+        self.assertIn("dot(surfaceNormal, halfAngle)", receiver)
+        self.assertNotIn("lit(dot(normal, lightVec)", receiver)
+
     def test_general_and_grass_shaders_share_live_pssm_splits(self):
         general = load("resources/materials/general.program")
         grass = load("resources/materials/grass.material")

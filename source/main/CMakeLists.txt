@@ -200,7 +200,8 @@ set(SOURCE_FILES
         system/Console.{h,cpp}
         system/ConsoleCmd.{h,cpp}
         system/CVar.{h,cpp}
-        terrain/OgreTerrainPSSMMaterialGenerator.{h,cpp}
+        # OGRE14: use the upstream TerrainMaterialGeneratorA implementation;
+        # the custom OGRE1.11 material generator is retained only in the fallback branch.
         terrain/ProceduralManager.{h,cpp}
         terrain/ProceduralRoad.{h,cpp}
         terrain/SurveyMapEntity.h

@@ -4,6 +4,23 @@ The `graphics-overhaul` branch is **experimental**. It builds against the origin
 
 ## Windows dependencies
 
+### Visual C++ runtime requirement
+
+The portable GitHub ZIP does not bundle the MSVC runtime. A binary import
+audit of the compiled Windows release found `MSVCP140.dll`,
+`VCRUNTIME140.dll`, and `VCRUNTIME140_1.dll` are required by `RoR.exe`
+and its OGRE renderer plugins.
+
+If Windows reports a missing `MSVCP140.dll` or `VCRUNTIME140*.dll`,
+install Microsoft's latest supported **Visual C++ Redistributable x64**:
+
+https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist
+
+Do **not** download individual MSVC DLLs from unofficial DLL websites.
+The itch.io package declares the prerequisite in `tools/windows/.itch.toml`,
+but a direct GitHub ZIP installation may need it installed separately.
+
+
 Windows GitHub Actions builds now use `tools/windows/Add-LegacyDirectX.ps1` **after** installing the game but **before** packaging the portable release. That script downloads the official `Microsoft.DXSDK.D3DX` **9.29.952.8** NuGet package and copies the four unmodified, Microsoft-signed 64-bit release libraries directly beside `RoR.exe`:
 
 - `D3DX9_43.dll` — legacy Direct3D9 utility API

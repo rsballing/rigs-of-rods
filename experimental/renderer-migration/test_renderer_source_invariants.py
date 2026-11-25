@@ -88,6 +88,8 @@ class RendererSourceContracts(unittest.TestCase):
         cpp = load("source/main/gfx/ShadowManager.cpp")
         self.assertIn("PSSM_Shadows.Quality = App::gfx_shadow_quality->getInt();", cpp)
         self.assertIn("pssmSetup->calculateSplitPoints(3, near_clip,", cpp)
+        self.assertIn('"[RoR Graphics Preview] PSSM quality="', cpp)
+        self.assertIn('Ogre::LogManager::getSingleton().logMessage(diag.str());', cpp)
 
     def test_renderer_startup_diagnoses_missing_plugin_dependencies(self):
         app = load("source/main/AppContext.cpp")

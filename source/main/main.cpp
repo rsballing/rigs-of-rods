@@ -198,6 +198,13 @@ int main(int argc, char *argv[])
         App::GetContentManager()->AddResourcePack(ContentManager::ResourcePack::FONTS);
         App::GetContentManager()->AddResourcePack(ContentManager::ResourcePack::ICONS);
         App::GetContentManager()->AddResourcePack(ContentManager::ResourcePack::OGRE_CORE);
+        // OGRE 14's RTShaderSystem needs FFPLib/SGX shaders, including
+        // SGXLib_IntegratedPSSM and normal mapping, available at startup.
+        // Register with General so generated programs can resolve the
+        // shader-library dependencies from their default resource group.
+        App::GetContentManager()->AddResourcePack(
+            ContentManager::ResourcePack::RTSHADER,
+            Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
         App::GetContentManager()->AddResourcePack(ContentManager::ResourcePack::WALLPAPERS);
         App::GetContentManager()->AddResourcePack(ContentManager::ResourcePack::SCRIPTS);
 

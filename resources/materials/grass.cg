@@ -104,11 +104,12 @@ void main_fp(float3 uv			: TEXCOORD0,
 	{
 		splitColour = float4(0, 0.9, 0, 1);
 		shadowing = shadowPCF(shadowMap1, LightPosition1, invShadowMapSize1.xy); //1
-	}else
+	}
+	else if (uv.z <= pssmSplitPoints.w)
 	{
-		splitColour = float4(0.9, 0.9, 0, 1);
-		shadowing = shadowPCF(shadowMap2, LightPosition2, invShadowMapSize2.xy); //2
-	}/**/
+		// Sample only within the final cascade. Outside: no shadows.
+		shadowing = shadowPCF(shadowMap2, LightPosition2, invShadowMapSize2.xy);
+	}
 		//shadowing = shadowPCF(shadowMap0, LightPosition0, invShadowMapSize0.xy);
 
 

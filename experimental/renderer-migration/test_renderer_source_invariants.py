@@ -158,10 +158,30 @@ class RendererSourceContracts(unittest.TestCase):
         self.assertIn("const Vector3 face_normal = edge1.crossProduct(edge2);", section)
         self.assertIn("!std::isfinite(doubled_area)", section)
         self.assertIn("doubled_area <= 1e-10f", section)
-        collapsed = section.split("if (doubled_area > m_s_ref[i])", 1)[1].split("}", 1)[0]
+        collapsed = section.split("if (doubled_area > m_s_ref[i])", 1)[1].split(
+            "// Use area-weighted face normals", 1
+        )[0]
+        self.assertIn("CabMeshSafety::CanCollapseFace(", collapsed)
         self.assertIn("continue;", collapsed)
         self.assertIn("m_vertices[m_indices[i*3]].normal += face_normal;", section)
         self.assertNotIn("v1=v1/s;", section)
+
+    def test_cab_mesh_glitch_guard_preserves_shared_vertices(self):
+        cpp = load("source/main/physics/flex/FlexObj.cpp")
+        header = load("source/main/physics/flex/FlexObj.h")
+        safety = load("source/main/physics/flex/CabMeshSafety.h")
+        cmake = load("experimental/renderer-migration/CMakeLists.txt")
+        self.assertIn("m_vertex_triangle_use_counts.assign(m_vertex_count, 0u)", cpp)
+        self.assertIn("++m_vertex_triangle_use_counts[m_indices[i]];", cpp)
+        self.assertIn("m_vertex_triangle_use_counts[m_indices[i*3+1]]", cpp)
+        self.assertIn("m_vertex_triangle_use_counts[m_indices[i*3+2]]", cpp)
+        self.assertIn("std::vector<unsigned int>   m_vertex_triangle_use_counts", header)
+        self.assertIn("second_vertex_face_count == 1u", safety)
+        self.assertIn("third_vertex_face_count == 1u", safety)
+        self.assertIn("normal_length_sq > 1e-20f", cpp)
+        self.assertIn("std::sqrt(normal_length_sq)", cpp)
+        self.assertIn("test_cab_mesh_safety.cpp", cmake)
+        self.assertIn("safe_cab_mesh_damage", cmake)
 
     def test_vehicle_shadow_toggle_checks_optional_meshes(self):
         gfx_actor = load("source/main/gfx/GfxActor.cpp")

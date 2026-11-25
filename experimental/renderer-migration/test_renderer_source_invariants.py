@@ -112,6 +112,17 @@ class RendererSourceContracts(unittest.TestCase):
             workflow.index("Bundle signed Microsoft DirectX 9 runtime DLLs"),
             workflow.index("      - name: Upload build to itch.io", workflow.index("  build-msvc:")),
         )
+        validation = load("tools/windows/Test-RoRWindowsPackage.ps1")
+        self.assertIn("Validate Windows renderer and shader distribution", workflow)
+        self.assertIn("./tools/windows/Test-RoRWindowsPackage.ps1", workflow)
+        self.assertIn("'RenderSystem_Direct3D9.dll'", validation)
+        self.assertIn("'RenderSystem_Direct3D11.dll'", validation)
+        self.assertIn("'RenderSystem_GL.dll'", validation)
+        self.assertIn("'resources/managed_materials/shadows/pssm/on/pssm.cg'", validation)
+        self.assertLess(
+            workflow.index("Validate Windows renderer and shader distribution"),
+            workflow.index("      - name: Upload redist folder", workflow.index("  build-msvc:")),
+        )
 
 
 if __name__ == "__main__":

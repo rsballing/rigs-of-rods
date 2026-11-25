@@ -192,7 +192,8 @@ void ShadowManager::updateTerrainMaterial(Ogre::TerrainMaterialGeneratorA::SM2Pr
     if (App::gfx_shadow_type->getEnum<GfxShadowType>() == GfxShadowType::PSSM)
     {
         Ogre::PSSMShadowCameraSetup* pssmSetup = static_cast<Ogre::PSSMShadowCameraSetup*>(PSSM_Shadows.mPSSMSetup.get());
-        matProfile->setReceiveDynamicShadowsDepth(true);
+        // OGRE14 TerrainMaterialGeneratorA generates its own shadow
+        // receiver through RTShaderSystem; the old Depth() API is removed.
         // In the graphics preview this can be enabled for the simplified
         // (composite-map) terrain LOD as well. It remains opt-in because
         // sampling three shadow maps on distant terrain is expensive.

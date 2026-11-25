@@ -47,3 +47,39 @@ If needed, obtain additional content packs from the RoR official repository/foru
 The Windows GitHub Actions workflow compiles and links the complete C++ game and produces a portable release. The independent renderer regression workflow compiles pure C++ policy tests on Windows/Linux and runs static checks for shadow-source invariants; these do **not** compile all generated Cg/HLSL shaders on a GPU.
 
 The branch now includes fixes for projected shadow-depth comparisons, cascade far-limit clipping, stale shadow-split setup, vehicle shadow-state restoration, and point-sampled manual PCF. These are incremental corrections to OGRE 1.x, **not** complete physically based rendering, global illumination, or a new engine. In-game visual quality and performance still require direct testing on representative maps and hardware.
+
+## Reproducible A/B benchmark procedure
+
+The preview now has two buttons in **Settings > Graphics**:
+**Apply experimental graphics preset** and **Restore stock graphics preset**.
+The latter resets the archived shadow technique to PSSM, shadow quality to 2,
+shadow distance to 350, shadow optimizations ON, and experimental sunlight OFF.
+The experimental preset selects PSSM, quality 2, 700-unit shadow distance,
+optimizations OFF, and SkyX sunlight ON when supported by that terrain.
+
+**Restart terrain after changing the PSSM settings**. An old terrain still has
+old cascade splits, textures, and shaders until it is reloaded. Compare the
+same game build, same map, same vehicle, same location and camera, same time
+of day and resolution in both states. Do not use different content packs for
+the comparison.
+
+| Scenario | Expected result | What to check |
+| --- | --- | --- |
+| Daytime, stock terrain material, PSSM ON | Stronger ground shadows and longer range | Tree trunks, buildings, wheels and vehicle contact shadows |
+| 700-unit preview PSSM vs 350-unit stock PSSM | More distant shadow coverage | Shadow cutoff in the distance; FPS cost |
+| SkyX noon with natural sunlight toggled | Directional light follows SkyX sun color gradient | Vehicle and terrain brightness; avoid washed-out white |
+| SkyX sunrise/sunset | Direct light smoothly fades with sun elevation | Harsh direct lighting at/after sunset, ambient remaining visible |
+| Map with custom terrain shader | May not receive new PSSM shadows | Vehicles still cast shadows; no crashes or shader errors |
+| Cabin/driver camera then outside camera | Shadows restored when optimization OFF | Wheels, beams, vehicle body |
+| Multiple vehicles on one map | No shadow toggling crash | Vehicles lacking optional wheel/cab/prop meshes |
+| Direct3D9 with 2010 DirectX app-local DLLs | Startup succeeds without modifying plugins.cfg | Check RoR.log on any missing plugin or GPU errors |
+
+For each run record: exact preview tag, GPU, renderer (D3D9/D3D11/OpenGL),
+screen resolution, selected preset, map and vehicle names, FPS before/after,
+and a screenshot from the same camera location. If the renderer fails,
+attach the corresponding `RoR.log` and the relevant OGRE log error.
+
+**Limitations:** CI can verify C++ compilation, unit checks, file presence,
+and a published Windows ZIP; it cannot establish that the shaders visibly
+render correctly on your GPU. Those observations require an actual Windows
+graphics session.

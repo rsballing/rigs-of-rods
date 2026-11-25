@@ -93,3 +93,46 @@ until all the following are verified:
 - The original `graphics-overhaul` installation remains unaffected.
 
 **Fallback:** `graphics-overhaul` (OGRE 1.11.6.1) until the above pass.
+
+## Implementation checkpoint — November 25, 2026
+
+A draft pull request is available at
+https://github.com/rsballing/rigs-of-rods/pull/2 (base: `graphics-overhaul`).
+It is **not** ready to merge.
+
+Beyond the initial dependency pin, the migration now contains source ports for:
+
+- OGRE14 `TerrainMaterialGeneratorA` and the map-specific custom terrain
+  material generator, with the legacy OGRE1.11 terrain generator excluded
+  from compilation on this branch.
+- Matching `ShadowManager` terrain-receiver type while retaining the
+  previous PSSM cascade setup for later visual verification.
+- Scene-node transforms for the primary terrain directional sun, SkyX and
+  Caelum sun directions, vegetation/map spot and point lights, vehicle
+  flares and animated beacons.
+- Scene-node-backed vehicle video cameras, mirrors, cubemap reflections,
+  and water reflection/refraction cameras.
+- Modern FlexBody vertex reorganization API and preserved UV-seam-safe cab
+  vertex mapping and normal checks.
+- MyGUI dashboard string conversion compatibility and a Direct3D11
+  warning-texture startup workaround based on the upstream OGRE14
+  experimental discussion.
+- Static preflight contract checks for these APIs on Windows/Linux.
+
+The upstream experimental minimal OGRE14 port
+(https://github.com/RigsOfRods/rigs-of-rods/pull/3418) was **closed without
+merge** and documented Direct3D11 and PSSM problems. Its patches are useful
+references, but do not establish that this fork compiles or runs.
+
+**Outstanding blocking verification:** no complete dependency-resolution,
+Windows C++ compilation, packaged `RoR.exe`, actual GPU shadow screenshot,
+or deformable-mesh crash test has been verified for the new branch. The
+connector currently exposes no completed workflow-run result for the draft
+PR commit. Preserve the fallback and do not distribute this branch as a
+finished graphics upgrade.
+
+Next compiler-driven work: resolve build errors one at a time; confirm the
+new Caelum/MyGUI/OGRE dependency graph; test Cg shader and PSSM runtime
+behavior; compare directional sun shadows against the 1.11 baseline; then
+run the crash/UV seam and mod compatibility matrix. Only after those
+checks should improved lighting be introduced on top of the renderer.

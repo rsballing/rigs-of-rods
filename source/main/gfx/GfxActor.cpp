@@ -3345,16 +3345,25 @@ void RoR::GfxActor::SetCastShadows(bool value)
             prop.pp_wheel_mesh_obj->getEntity()->setCastShadows(value);
     }
 
+    // A wheel or beam scene node may have multiple renderables attached.
+    // Toggling only attachment 0 left the others casting or missing shadows.
+    // Visit all attached objects and keep the state consistent.
     for (WheelGfx& wheel: m_wheels)
     {
-        if (wheel.wx_scenenode != nullptr && wheel.wx_scenenode->numAttachedObjects() > 0)
-            wheel.wx_scenenode->getAttachedObject(0)->setCastShadows(value);
+        if (wheel.wx_scenenode != nullptr)
+        {
+            for (unsigned short i = 0; i < wheel.wx_scenenode->numAttachedObjects(); ++i)
+                wheel.wx_scenenode->getAttachedObject(i)->setCastShadows(value);
+        }
     }
 
     for (BeamGfx& rod: m_gfx_beams)
     {
-        if (rod.rod_scenenode != nullptr && rod.rod_scenenode->numAttachedObjects() > 0)
-            rod.rod_scenenode->getAttachedObject(0)->setCastShadows(value);
+        if (rod.rod_scenenode != nullptr)
+        {
+            for (unsigned short i = 0; i < rod.rod_scenenode->numAttachedObjects(); ++i)
+                rod.rod_scenenode->getAttachedObject(i)->setCastShadows(value);
+        }
     }
 
     for (FlexBody* fb: m_flexbodies)

@@ -69,8 +69,12 @@ class RendererSourceContracts(unittest.TestCase):
     def test_vehicle_shadow_toggle_checks_optional_meshes(self):
         gfx_actor = load("source/main/gfx/GfxActor.cpp")
         self.assertIn("if (m_cab_entity != nullptr)", gfx_actor)
-        self.assertIn("wheel.wx_scenenode->numAttachedObjects() > 0", gfx_actor)
-        self.assertIn("rod.rod_scenenode->numAttachedObjects() > 0", gfx_actor)
+        self.assertIn("i < wheel.wx_scenenode->numAttachedObjects()", gfx_actor)
+        self.assertIn("i < rod.rod_scenenode->numAttachedObjects()", gfx_actor)
+        self.assertIn("wheel.wx_scenenode->getAttachedObject(i)->setCastShadows(value)", gfx_actor)
+        self.assertIn("rod.rod_scenenode->getAttachedObject(i)->setCastShadows(value)", gfx_actor)
+        self.assertNotIn("wheel.wx_scenenode->getAttachedObject(0)->setCastShadows(value)", gfx_actor)
+        self.assertNotIn("rod.rod_scenenode->getAttachedObject(0)->setCastShadows(value)", gfx_actor)
         self.assertIn("if (fb != nullptr)", gfx_actor)
 
     def test_vehicle_shadows_restore_when_optimization_disabled(self):

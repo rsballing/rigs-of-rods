@@ -21,7 +21,7 @@
 
 #include "FlexObj.h"
 
-#include "ApproxMath.h" // fast_normalise()
+#include "CabMeshSafety.h" // safe visual collapse policy
 #include <cmath>
 #include "GfxActor.h"
 
@@ -73,6 +73,11 @@ FlexObj::FlexObj(RoR::GfxActor* gfx_actor, node_t* all_nodes, std::vector<CabTex
     {
         m_indices[i]=ComputeVertexPos(static_cast<int>(i/3), triangles[i], submesh_defs);
     }
+    // Only non-shared vertices may move during overstretched-face collapse.
+    // Shared vertices must retain their simulation-derived positions.
+    m_vertex_triangle_use_counts.assign(m_vertex_count, 0u);
+    for (size_t i = 0; i < m_index_count; ++i)
+        ++m_vertex_triangle_use_counts[m_indices[i]];
 
     m_s_ref=(float*)malloc(numtriangles*sizeof(float));
 
@@ -187,7 +192,9 @@ int FlexObj::ComputeVertexPos(int tidx, int v, std::vector<CabSubmesh>& submeshe
 Vector3 FlexObj::UpdateMesh()
 {
     RoR::NodeSB* all_nodes = m_gfx_actor->GetSimNodeBuffer();
-    Ogre::Vector3 center=(all_nodes[m_vertex_nodes[0]].AbsPosition+all_nodes[m_vertex_nodes[1]].AbsPosition)/2.0;
+    // Halve first: even a representable midpoint can overflow in (a+b)/2.
+    const Ogre::Vector3 center = all_nodes[m_vertex_nodes[0]].AbsPosition * 0.5f
+        + all_nodes[m_vertex_nodes[1]].AbsPosition * 0.5f;
     for (size_t i=0; i<m_vertex_count; i++)
     {
         //set position
@@ -210,14 +217,21 @@ Vector3 FlexObj::UpdateMesh()
         if (!std::isfinite(doubled_area) || doubled_area <= 1e-10f)
             continue;
 
-        // Match the existing overstretched-triangle collapse rule, but do
-        // not include the rejected face's old (uncollapsed) normal in
-        // adjacent vertices. Otherwise collapsed panels cause stray glints.
+        // Preserve topology: collapsing a vertex shared by multiple
+        // triangles would distort neighbouring panels even though their
+        // physics nodes never moved. Shared vertices stay at simulated
+        // positions; only isolated vertices may be collapsed.
         if (doubled_area > m_s_ref[i])
         {
-            m_vertices[m_indices[i*3+1]].position=m_vertices[m_indices[i*3]].position+Vector3(0.1,0,0);
-            m_vertices[m_indices[i*3+2]].position=m_vertices[m_indices[i*3]].position+Vector3(0,0,0.1);
-            continue;
+            if (CabMeshSafety::CanCollapseFace(
+                    doubled_area, m_s_ref[i],
+                    m_vertex_triangle_use_counts[m_indices[i*3+1]],
+                    m_vertex_triangle_use_counts[m_indices[i*3+2]]))
+            {
+                m_vertices[m_indices[i*3+1]].position=m_vertices[m_indices[i*3]].position+Vector3(0.1,0,0);
+                m_vertices[m_indices[i*3+2]].position=m_vertices[m_indices[i*3]].position+Vector3(0,0,0.1);
+                continue;
+            }
         }
 
         // Use area-weighted face normals, as in the renderer-neutral mesh
@@ -230,7 +244,11 @@ Vector3 FlexObj::UpdateMesh()
     //normalize
     for (size_t i=0; i<m_vertex_count; i++)
     {
-        m_vertices[i].normal = approx_normalise(m_vertices[i].normal);
+        const float normal_length_sq = m_vertices[i].normal.squaredLength();
+        if (std::isfinite(normal_length_sq) && normal_length_sq > 1e-20f)
+            m_vertices[i].normal /= std::sqrt(normal_length_sq);
+        else
+            m_vertices[i].normal = Vector3::UNIT_Y; // degenerate-face fallback
     }
 
     return center;

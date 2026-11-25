@@ -13,13 +13,18 @@ from pathlib import Path
 import sys
 
 ROOT = Path(__file__).resolve().parents[2]
-PROGRAM = ROOT / "resources/managed_materials/shadows/pssm/on/pssm.cg"
 TARGETS = (
-    ("shadow_caster_vs", "vs_2_0"),
-    ("shadow_caster_ps", "ps_2_0"),
-    ("shadow_caster_alpha_ps", "ps_2_0"),
-    ("shadow_receiver_vs", "vs_1_1"),
-    ("shadow_receiver_ps", "ps_2_x"),
+    # (relative Cg source path, shader entry point, Cg compiler profile)
+    ("resources/managed_materials/shadows/pssm/on/pssm.cg", "shadow_caster_vs", "vs_2_0"),
+    ("resources/managed_materials/shadows/pssm/on/pssm.cg", "shadow_caster_ps", "ps_2_0"),
+    ("resources/managed_materials/shadows/pssm/on/pssm.cg", "shadow_caster_alpha_ps", "ps_2_0"),
+    ("resources/managed_materials/shadows/pssm/on/pssm.cg", "shadow_receiver_vs", "vs_1_1"),
+    ("resources/managed_materials/shadows/pssm/on/pssm.cg", "shadow_receiver_ps", "ps_2_x"),
+    ("resources/materials/general.cg", "diffuse_sh_vs", "vs_1_1"),
+    ("resources/materials/general.cg", "diffuse_sh_ps", "ps_2_x"),
+    ("resources/materials/general.cg", "diffuse_sh_a_ps", "ps_2_x"),
+    ("resources/materials/grass.cg", "main_vp", "vs_1_1"),
+    ("resources/materials/grass.cg", "main_fp", "ps_2_x"),
 )
 CG_SOURCE = 4112
 
@@ -30,8 +35,9 @@ def run(redist: Path) -> int:
         raise RuntimeError("This compiler integration test must run on Windows")
     if not cg_dll.is_file():
         raise FileNotFoundError(f"Missing packaged Cg compiler DLL: {cg_dll}")
-    if not PROGRAM.is_file():
-        raise FileNotFoundError(f"Missing PSSM shader: {PROGRAM}")
+    for filename, _, _ in TARGETS:
+        if not (ROOT / filename).is_file():
+            raise FileNotFoundError(f"Missing checked-in Cg shader: {filename}")
 
     # Python 3.8+ supports application-local dependent DLL search paths.
     directory_cookie = os.add_dll_directory(str(redist.resolve()))
@@ -67,9 +73,9 @@ def run(redist: Path) -> int:
         if not ctx:
             raise RuntimeError("NVIDIA Cg compiler could not create its context")
         try:
-            shader_source = PROGRAM.read_bytes()
             failures = []
-            for entry, profile_name in TARGETS:
+            for filename, entry, profile_name in TARGETS:
+                shader_source = (ROOT / filename).read_bytes()
                 profile = cg.cgGetProfile(profile_name.encode("ascii"))
                 if not profile:
                     failures.append(f"{entry} [{profile_name}]: profile not supported by compiler")
@@ -101,7 +107,7 @@ def run(redist: Path) -> int:
             if failures:
                 print("\nCg compile failures:\n" + "\n\n".join(failures), file=sys.stderr)
                 return 1
-            print(f"PASS: compiled all {len(TARGETS)} managed PSSM entrypoints using packaged cg.dll")
+            print(f"PASS: compiled all {len(TARGETS)} PSSM, general, and grass entrypoints using packaged cg.dll")
             return 0
         finally:
             cg.cgDestroyContext(ctx)

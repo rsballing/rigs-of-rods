@@ -223,6 +223,20 @@ class RendererSourceContracts(unittest.TestCase):
             workflow.index("      - name: Upload redist folder", workflow.index("  build-msvc:")),
         )
 
+    def test_main_menu_remains_in_viewport_on_small_displays(self):
+        main_menu = load("source/main/gui/panels/GUI_GameMainMenu.cpp")
+        menu_header = load("source/main/gui/panels/GUI_GameMainMenu.h")
+        self.assertIn("std::max(margin, display_size.y - window_height - margin)", main_menu)
+        self.assertIn("ImGui::SetNextWindowSizeConstraints(", main_menu)
+        self.assertIn("ImGui::GetContentRegionAvail().x", main_menu)
+        self.assertIn("BUTTON_BG_COLOR       = ImVec4(0.30f", menu_header)
+
+    def test_windows_release_contains_ui_resource_packs(self):
+        validator = load("tools/windows/Test-RoRWindowsPackage.ps1")
+        for pack in ("fonts", "mygui", "wallpapers", "icons"):
+            self.assertIn(f"'"+pack+"'", validator)
+        self.assertIn("Incomplete Windows UI assets:", validator)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

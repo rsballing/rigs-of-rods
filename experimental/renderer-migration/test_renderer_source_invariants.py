@@ -27,6 +27,12 @@ class RendererSourceContracts(unittest.TestCase):
         self.assertIn("camDepth > pssmSplitPoints.", cpp)
         self.assertIn("ShaderHelper::getChannel(numTextures - 1)", cpp)
 
+    def test_graphics_settings_displays_actual_active_renderer(self):
+        settings = load("source/main/gui/panels/GUI_GameSettings.cpp")
+        self.assertIn("Ogre::Root* root = App::GetAppContext()->GetOgreRoot();", settings)
+        self.assertIn("root != nullptr && root->getRenderSystem() != nullptr", settings)
+        self.assertIn('"Active renderer: %s"', settings)
+
     def test_vehicle_shadow_receiver_normalizes_interpolated_normals(self):
         shader = load("resources/managed_materials/shadows/pssm/on/pssm.cg")
         receiver = shader.split("void shadow_receiver_ps(", 1)[1]

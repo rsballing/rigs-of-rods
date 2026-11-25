@@ -36,6 +36,20 @@ foreach ($relative in $mandatoryFiles) {
     }
 }
 
+# Dear ImGui relies on the fonts pack, and the menu background and
+# surrounding UI rely on the wallpaper, icon and MyGUI resource packs.
+# RoR supports either uncompressed resource directories or matching ZIPs.
+# Missing UI packs can make the game unusable even if RoR.exe loads.
+foreach ($pack in @('fonts', 'mygui', 'wallpapers', 'icons')) {
+    $folder = Join-Path $root "resources/$pack"
+    $zip = Join-Path $root "resources/$pack.zip"
+    if (-not ((Test-Path -LiteralPath $folder -PathType Container) -or
+              (Test-Path -LiteralPath $zip -PathType Leaf))) {
+        throw "Incomplete Windows UI assets: missing $pack resource pack (directory or ZIP)"
+    }
+}
+Write-Host "Windows UI resource packs present: fonts, mygui, wallpapers, icons."
+
 # Reject x86 binaries copied from the NuGet package's other architecture.
 # The x64 game cannot load an x86 renderer or x86 DirectX runtime, and
 # a file-existence check alone would mistakenly accept that distribution.

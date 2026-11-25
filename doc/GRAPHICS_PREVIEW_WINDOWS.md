@@ -126,6 +126,43 @@ The Windows GitHub Actions workflow compiles and links the complete C++ game and
 
 The branch now includes fixes for projected shadow-depth comparisons, cascade far-limit clipping, stale shadow-split setup, vehicle shadow-state restoration, and point-sampled manual PCF. These are incremental corrections to OGRE 1.x, **not** complete physically based rendering, global illumination, or a new engine. In-game visual quality and performance still require direct testing on representative maps and hardware.
 
+## Scenery or terrain shadows absent while vehicles still have shadows
+
+If the preview shows shadowing only on vehicles, first select **PSSM** as the
+shadow technique, apply the experimental preset, and **reload the terrain**
+(or close and restart RoR). Changing a stored setting mid-map does not recreate
+terrain GPU materials immediately.
+
+Stock terrains have different *high-detail* and *low-detail* receiver shaders.
+RoR's default PSSM configuration disables dynamic shadows on low-detail terrain
+for performance. The revised preview adds an **experimental shadows on distant
+stock terrain** checkbox in Settings > Graphics and enables it with the
+experimental preset. It is default **OFF**, and the stock preset restores it to
+OFF. This setting applies only after a terrain reload and may cost GPU time.
+
+Maps that specify `custom_material_name` in their terrain definition do **not**
+use RoR's built-in PSSM terrain generator. The new checkbox cannot make an
+arbitrary custom shader receive shadows. For that case, add/repair the
+shadow-receiver shader in the specific mod; do not globally replace a mod's
+custom terrain material because it may break texturing, blending, and lighting.
+
+To isolate missing shadows:
+
+1. Use a map that has the **stock** terrain material.
+2. Put a stationary vehicle beside a tree or building under direct sunlight,
+   close to the camera (within the configured shadow range).
+3. Look for the vehicle's shadow *on the ground*, not just shading on the
+   vehicle body. Compare with shadows cast by trees/buildings.
+4. Test the same view using high-detail terrain shadow reception on/off,
+   then the new low-detail receiver on/off, with a map reload each time.
+5. Record the map name, the renderer, whether the vehicle shadow reaches the
+   ground, and whether the issue occurs in the official version.
+
+There is a separate issue if a map object's `.odef` specifies `nocast`:
+that object deliberately does not cast shadows. Paged vegetation and custom
+transparency/alpha shaders also require separate validation; enabling terrain
+shadow *reception* alone cannot make those objects cast shadows.
+
 ## Reproducible A/B benchmark procedure
 
 The preview now has two buttons in **Settings > Graphics**:

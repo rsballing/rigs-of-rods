@@ -46,10 +46,20 @@ try {
 
     $legalDir = Join-Path $destination 'licenses/Microsoft.DXSDK.D3DX'
     New-Item -ItemType Directory -Path $legalDir -Force | Out-Null
+    # NuGet may put legal documents in the package root or nest them under
+    # a "build" or package metadata folder; accept LICENSE/NOTICE with an
+    # optional .txt/.md extension. Never rename a third-party license's body.
     foreach ($legalName in @('LICENSE', 'NOTICE')) {
-        $source = Join-Path $extracted $legalName
-        if (Test-Path $source -PathType Leaf) {
-            Copy-Item $source (Join-Path $legalDir $legalName) -Force
+        $legalCandidates = @(Get-ChildItem -Path $extracted -Recurse -File | Where-Object {
+            $_.BaseName -ieq $legalName -or $_.Name -ieq $legalName
+        } | Sort-Object FullName)
+        if ($legalCandidates.Count -gt 0) {
+            $legalSource = $legalCandidates[0].FullName
+            Copy-Item -LiteralPath $legalSource -Destination (Join-Path $legalDir $legalCandidates[0].Name) -Force
+            Write-Host "Included Microsoft $($legalCandidates[0].Name) in release"
+        }
+        else {
+            Write-Warning "Microsoft package contains no discoverable $legalName file; see official license URL in README."
         }
     }
     @(
@@ -57,6 +67,7 @@ try {
         'Copyright Microsoft Corporation. The DLLs are redistributed unmodified, application-local, with RoR.exe.',
         'See the package license and notices; package source:',
         'https://www.nuget.org/packages/Microsoft.DXSDK.D3DX/9.29.952.8',
+        'Microsoft license: https://www.nuget.org/packages/Microsoft.DXSDK.D3DX/9.29.952.8/License',
         'These DLLs are not licensed as part of Rigs of Rods GPL source code.'
     ) | Set-Content -Path (Join-Path $legalDir 'README.txt') -Encoding UTF8
 

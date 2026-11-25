@@ -2370,6 +2370,8 @@ void ActorSpawner::AddBaseFlare(RigDef::FlareBase & def)
             flare.light->setAttenuation(200, 0.9, 0, 0);
             flare.light->setSpotlightRange( Ogre::Degree(35), Ogre::Degree(45) );
             flare.light->setCastShadows(false);
+        Ogre::SceneNode* flare_light_node = App::GetGfxScene()->GetSceneManager()->getRootSceneNode()->createChildSceneNode();
+        flare_light_node->attachObject(flare.light);
         }
         else if (flare.fl_type == FlareType::HIGH_BEAM)
         {
@@ -7205,6 +7207,9 @@ void ActorSpawner::CreateVideoCamera(RigDef::VideoCamera* def)
         }
 
         vcam.vcam_ogre_camera = App::GetGfxScene()->GetSceneManager()->createCamera(vcam.vcam_material->getName() + "_camera");
+        // OGRE 14 camera transforms belong to an attached scene node.
+        Ogre::SceneNode* vcam_node = App::GetGfxScene()->GetSceneManager()->getRootSceneNode()->createChildSceneNode();
+        vcam_node->attachObject(vcam.vcam_ogre_camera);
 
         if (!App::gfx_window_videocams->getBool())
         {
@@ -7323,6 +7328,8 @@ void ActorSpawner::CreateMirrorPropVideoCam(
 
         // Create OGRE camera
         vcam.vcam_ogre_camera = App::GetGfxScene()->GetSceneManager()->createCamera(this->ComposeName("camera @ mirror prop", mprop_counter));
+        Ogre::SceneNode* mirror_camera_node = App::GetGfxScene()->GetSceneManager()->getRootSceneNode()->createChildSceneNode();
+        mirror_camera_node->attachObject(vcam.vcam_ogre_camera);
         vcam.vcam_ogre_camera->setNearClipDistance(0.2f);
         vcam.vcam_ogre_camera->setFarClipDistance(App::GetCameraManager()->GetCamera()->getFarClipDistance());
         vcam.vcam_ogre_camera->setFOVy(Ogre::Degree(50));

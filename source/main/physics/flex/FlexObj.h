@@ -25,6 +25,7 @@
 #include "SimData.h"
 
 #include <Ogre.h>
+#include <vector>
 
 namespace RoR {
 
@@ -107,6 +108,7 @@ private:
 
     size_t                      m_index_count;
     unsigned short*             m_indices;
+    std::vector<unsigned int>   m_vertex_triangle_use_counts; // protect shared cab vertices
     int                         m_triangle_count;	
 };
 

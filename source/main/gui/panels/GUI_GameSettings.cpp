@@ -411,6 +411,15 @@ void GameSettings::DrawGraphicsSettings()
 
     ImGui::TextDisabled("%s", _LC("GameSettings", "Video settings"));
 
+    // Show the renderer actually selected by OGRE, not just a configured
+    // preference. This helps diagnose D3D9 vs D3D11 shader differences when
+    // comparing graphics previews or following legacy DLL instructions.
+    Ogre::Root* root = App::GetAppContext()->GetOgreRoot();
+    if (root != nullptr && root->getRenderSystem() != nullptr)
+    {
+        ImGui::TextDisabled("Active renderer: %s", root->getRenderSystem()->getName().c_str());
+    }
+
     // One-click baseline for testing the preview's actual graphics changes.
     // Do not force the SkyX mode on maps which do not support its configuration.
     if (ImGui::Button("Apply experimental graphics preset"))

@@ -70,7 +70,10 @@ if (Test-Path $mods -PathType Container) {
     Note 'User mods directory: not found in Documents (may be stored elsewhere)'
 }
 
-if ($TestBinaryLoad) {
+if ($TestBinaryLoad -and -not (Test-Path $buildInfo -PathType Leaf)) {
+    Note '[SKIP] Binary load check: this older preview may not support --ci-load-check.'
+}
+elseif ($TestBinaryLoad) {
     $exe = Join-Path $root 'RoR.exe'
     if (Test-Path -LiteralPath $exe -PathType Leaf) {
         try {

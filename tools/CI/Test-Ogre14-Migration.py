@@ -75,6 +75,29 @@ class Ogre14MigrationContract(unittest.TestCase):
         self.assertIn("sunlight_node->attachObject(mLight1)", sky)
         self.assertIn("getMainLight()->getParentSceneNode()->setDirection", caelum)
 
+    def test_ogre14_scene_lights_and_reflections(self):
+        objects = source("source/main/terrain/TerrainObjectManager.cpp")
+        water = source("source/main/gfx/GfxWater.cpp")
+        spawner = source("source/main/physics/ActorSpawner.cpp")
+        self.assertIn("spot_node->attachObject(spotLight);", objects)
+        self.assertIn("point_node->attachObject(pointlight);", objects)
+        self.assertIn("spot_node->setDirection(spotl.dir);", objects)
+        self.assertIn("refract_camera_node->attachObject(m_refract_cam);", water)
+        self.assertIn("reflect_camera_node->attachObject(m_reflect_cam);", water)
+        self.assertIn("m_reflect_cam->getParentSceneNode()->setPosition(", water)
+        self.assertIn("m_refract_cam->getParentSceneNode()->setOrientation(", water)
+        self.assertIn("flare_light_node->attachObject(flare.light);", spawner)
+
+    def test_ogre14_caelum_initialisation_and_d3d11_safety(self):
+        main = source("source/main/main.cpp")
+        plugins = source("source/main/plugins.cfg.in")
+        warning = source("source/main/system/CVar.cpp")
+        self.assertIn("new Caelum::CaelumPlugin()", main)
+        self.assertIn("#include <Caelum.h>", main)
+        self.assertNotIn("@CFG_OGRE_PLUGIN_CAELUM@", plugins)
+        self.assertIn('"Warning texture",', warning)
+        self.assertIn('CVAR_ARCHIVE | CVAR_TYPE_BOOL,    "true"); // OGRE14 DX11', warning)
+
     def test_preserve_existing_graphics_controls_and_shadow_code(self):
         ui = source("source/main/gui/panels/GUI_GameSettings.cpp")
         menu = source("source/main/gui/panels/GUI_GameMainMenu.cpp")

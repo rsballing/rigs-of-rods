@@ -48,6 +48,33 @@ class Ogre14MigrationContract(unittest.TestCase):
         self.assertIn("GetEnvMap().CreateSceneNodes()", scene)
         self.assertNotIn("useGlobalInstancingVertexBufferIsAvailable =", imgui)
 
+    def test_ogre14_terrain_generator_and_shadow_pipeline(self):
+        terrain = source("source/main/terrain/TerrainGeometryManager.cpp")
+        shadow_api = source("source/main/gfx/ShadowManager.h")
+        shadow_impl = source("source/main/gfx/ShadowManager.cpp")
+        game_cmake = source("source/main/CMakeLists.txt")
+        self.assertIn("new Ogre::TerrainMaterialGeneratorA()", terrain)
+        self.assertIn("class Terrn2CustomMaterial : public Ogre::TerrainMaterialGenerator", terrain)
+        self.assertIn("Ogre::MaterialPtr generate(const Ogre::Terrain* terrain) override", terrain)
+        self.assertIn("Ogre::TerrainMaterialGeneratorA::SM2Profile*", shadow_api)
+        self.assertIn("Ogre::TerrainMaterialGeneratorA::SM2Profile*", shadow_impl)
+        self.assertNotIn("terrain/OgreTerrainPSSMMaterialGenerator.{h,cpp}", game_cmake)
+        self.assertIn("setShadowTextureCountPerLightType", shadow_impl)
+
+    def test_ogre14_vehicle_camera_and_sun_node_transforms(self):
+        spawner = source("source/main/physics/ActorSpawner.cpp")
+        gfx = source("source/main/gfx/GfxActor.cpp")
+        terrain = source("source/main/terrain/Terrain.cpp")
+        sky = source("source/main/gfx/SkyXManager.cpp")
+        caelum = source("source/main/gfx/SkyManager.cpp")
+        self.assertIn("vcam_node->attachObject(vcam.vcam_ogre_camera)", spawner)
+        self.assertIn("mirror_camera_node->attachObject(vcam.vcam_ogre_camera)", spawner)
+        self.assertIn("vidcam.vcam_ogre_camera->getParentSceneNode()->setPosition(", gfx)
+        self.assertIn("lightbar_light_node->attachObject(prop.pp_beacon_light[k])", spawner)
+        self.assertIn("main_light_node->attachObject(m_main_light)", terrain)
+        self.assertIn("sunlight_node->attachObject(mLight1)", sky)
+        self.assertIn("getMainLight()->getParentSceneNode()->setDirection", caelum)
+
     def test_preserve_existing_graphics_controls_and_shadow_code(self):
         ui = source("source/main/gui/panels/GUI_GameSettings.cpp")
         menu = source("source/main/gui/panels/GUI_GameMainMenu.cpp")

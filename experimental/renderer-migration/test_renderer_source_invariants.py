@@ -223,6 +223,26 @@ class RendererSourceContracts(unittest.TestCase):
             workflow.index("      - name: Upload redist folder", workflow.index("  build-msvc:")),
         )
 
+    def test_low_lod_terrain_shadows_are_opt_in_and_linked_to_preset(self):
+        header = load("source/main/Application.h")
+        source = load("source/main/Application.cpp")
+        cvars = load("source/main/system/CVar.cpp")
+        shadow_manager = load("source/main/gfx/ShadowManager.cpp")
+        settings = load("source/main/gui/panels/GUI_GameSettings.cpp")
+        menu = load("source/main/gui/panels/GUI_GameMainMenu.cpp")
+        terrain_generator = load("source/main/terrain/OgreTerrainPSSMMaterialGenerator.cpp")
+        self.assertIn("extern CVar* gfx_terrain_low_lod_shadows;", header)
+        self.assertIn("CVar* gfx_terrain_low_lod_shadows;", source)
+        self.assertIn('gfx_terrain_low_lod_shadows", "Receive PSSM shadows on low LOD terrain"', cvars)
+        self.assertIn('CVAR_TYPE_BOOL, "false"', cvars)
+        self.assertIn("App::gfx_terrain_low_lod_shadows->getBool()", shadow_manager)
+        self.assertIn("matProfile->setReceiveDynamicShadowsLowLod(", shadow_manager)
+        for ui in (menu, settings):
+            self.assertIn("App::gfx_terrain_low_lod_shadows->setVal(true);", ui)
+            self.assertIn("App::gfx_terrain_low_lod_shadows->setVal(false);", ui)
+        self.assertIn("getReceiveDynamicShadowsEnabled() && tt != RENDER_COMPOSITE_MAP", terrain_generator)
+        self.assertIn("(tt != LOW_LOD || mLowLodShadows)", terrain_generator)
+
     def test_main_menu_remains_in_viewport_on_small_displays(self):
         main_menu = load("source/main/gui/panels/GUI_GameMainMenu.cpp")
         menu_header = load("source/main/gui/panels/GUI_GameMainMenu.h")

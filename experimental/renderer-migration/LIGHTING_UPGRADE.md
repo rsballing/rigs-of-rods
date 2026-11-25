@@ -36,7 +36,9 @@ This is an **incremental OGRE 1.x lighting improvement**, not an OGRE-Next port,
 
 ## Important limitations
 
-- The full RoR game has **not** been compiled or launched as part of this upgrade; the local environment lacks OGRE build dependencies and a game/graphics runtime. Source integration and visual quality must be verified with the built application.
-- The pure shadow-quality settings logic compiled and passed locally under GCC, including an AddressSanitizer/UndefinedBehaviorSanitizer run. These tests do not compile OGRE integration or shader programs.
+- The full Windows game **has** compiled in GitHub Actions and a Windows preview has been published (for example, #77 at commit `ee57c0cc`). This validates compilation and packaging **for that historical commit only**. More recent graphics commits need their own successful Windows builds.
+- The local Linux environment cannot run the Windows graphics application or inspect GPU screenshots. A successful Windows build is **not** a visual-quality, performance, or mod compatibility test.
+- Standalone C++ tests and Python source-contract tests run in the renderer-migration CI workflow. The Windows game-build workflow additionally compiles a selection of managed-material, general-material and grass Cg shader entrypoints (provided the required runner dependencies are available). Generated Ogre terrain shader permutations and actual GPU output still require in-game checks.
+- For repeatable map/vehicle/camera comparisons and acceptance criteria, see `GRAPHICS_TEST_MATRIX.md`.
 - Custom map material support, stable CSM splits across all cameras, complete vehicle casting and terrain receiving, PBR, HDR tone mapping, SSAO, SSR, and true GI are **not finished**.
 - A successful lighting overhaul also needs screenshots and frame-time measurements against baseline RoR on representative maps.

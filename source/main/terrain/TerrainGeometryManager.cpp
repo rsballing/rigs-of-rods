@@ -300,6 +300,21 @@ bool TerrainGeometryManager::InitTerrain(std::string otc_filename)
     App::GetGuiManager()->LoadingWindow.SetProgress(44, _L("Loading terrain pages ..."));
     m_ogre_terrain_group->loadAllTerrains(true);
 
+    // The OGRE14 terrain profile does not own this setting; it lives on
+    // each individual terrain. Respect the original map configuration
+    // both for freshly generated and cached terrain pages.
+    if (m_spec->global_colormap_enabled &&
+        terrainManager->GetDef()->custom_material_name.empty())
+    {
+        for (const OTCPage& page : m_spec->pages)
+        {
+            Ogre::Terrain* page_terrain =
+                m_ogre_terrain_group->getTerrain(page.pos_x, page.pos_z);
+            if (page_terrain && !page_terrain->getGlobalColourMapEnabled())
+                page_terrain->setGlobalColourMapEnabled(true);
+        }
+    }
+
     Ogre::Terrain* terrain = m_ogre_terrain_group->getTerrain(0, 0);
 
     if (terrain == nullptr)
@@ -451,9 +466,10 @@ void TerrainGeometryManager::configureTerrainDefaults()
                 matProfile->setLayerSpecularMappingEnabled(m_spec->spec_map_enabled);
             }
             matProfile->setLayerParallaxMappingEnabled(m_spec->parallax_enabled);
-            matProfile->setGlobalColourMapEnabled(m_spec->global_colormap_enabled);
-            matProfile->setReceiveDynamicShadowsDepth(m_spec->recv_dyn_shadows_depth);
-
+            // OGRE 14 TerrainMaterialGeneratorA chooses its own depth-based
+            // shadow receiver, so the obsolete setReceiveDynamicShadowsDepth()
+            // method must not be called. Global colour maps are configured
+            // on each Terrain instance, not its shader profile.
             terrainManager->getShadowManager()->updateTerrainMaterial(matProfile);
         }
     }

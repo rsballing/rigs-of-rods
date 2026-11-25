@@ -38,6 +38,29 @@ class RendererSourceContracts(unittest.TestCase):
         self.assertIn("dot(surfaceNormal, halfAngle)", receiver)
         self.assertNotIn("lit(dot(normal, lightVec)", receiver)
 
+    def test_manual_pssm_shadow_samplers_use_point_filter_and_white_border(self):
+        # Bilinear depth filtering before a manual depth comparison creates
+        # false shadows; clamping the shadowmap to its last texel smears
+        # dark streaks beyond the cascade projection.
+        for filename, expected in (
+            ("resources/materials/general.material", 9),
+            ("resources/materials/grass.material", 3),
+        ):
+            text = load(filename)
+            import re
+            units = re.findall(
+                r"texture_unit shadow_tex[012]\s*\{(.*?)\}",
+                text,
+                flags=re.DOTALL,
+            )
+            self.assertEqual(expected, len(units), filename)
+            for unit in units:
+                self.assertIn("content_type shadow", unit)
+                self.assertIn("tex_address_mode border", unit)
+                self.assertIn("tex_border_colour 1 1 1 1", unit)
+                self.assertIn("filtering none", unit)
+                self.assertNotIn("tex_address_mode clamp", unit)
+
     def test_general_and_grass_shaders_share_live_pssm_splits(self):
         general = load("resources/materials/general.program")
         grass = load("resources/materials/grass.material")

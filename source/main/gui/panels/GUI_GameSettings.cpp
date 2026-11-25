@@ -423,6 +423,16 @@ void GameSettings::DrawGraphicsSettings()
             App::gfx_natural_sunlight->setVal(true);
         restore_actor_shadows();
     }
+    // A stock baseline makes it possible to compare the same terrain without
+    // manually remembering five persistent graphics settings.
+    if (ImGui::Button("Restore stock graphics preset"))
+    {
+        App::gfx_shadow_type->setVal(static_cast<int>(GfxShadowType::PSSM));
+        App::gfx_shadow_quality->setVal(2);
+        App::gfx_shadow_distance->setVal(350);
+        App::gfx_reduce_shadows->setVal(true);
+        App::gfx_natural_sunlight->setVal(false);
+    }
     ImGui::TextDisabled("Reload terrain or restart the game to apply PSSM changes.");
 
     DrawGCombo(App::gfx_flares_mode, _LC("GameSettings", "Light sources"),

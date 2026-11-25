@@ -95,6 +95,21 @@ GPU/renderer combination.
    the active renderer, and `RoR.log`. The bundled
    `RoR-Graphics-Diagnostics.ps1` can report renderer setup.
 
+### Where to find the preview buttons
+
+The two custom graphics preset buttons are now accessible **directly on the
+startup main menu** under the **Graphics preview** heading:
+
+- **Apply preview preset**
+- **Restore stock preset**
+
+These controls are also under **Settings > Graphics** with their longer labels.
+They set the stored graphics configuration; load a terrain afterward to
+activate the preview settings. If neither button appears on the main menu,
+the executable is an **older build** rather than the revised preview. Check
+`GRAPHICS_BUILD_INFO.txt` in the extracted game folder. Source changes alone
+do not modify an existing `RoR.exe`.
+
 ## Testing the experimental graphics
 
 1. Extract the *entire* Windows release ZIP, not just `RoR.exe`.

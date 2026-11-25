@@ -59,6 +59,22 @@ int main()
             unequal.vertices[0].normal.x < 0.01f,
         "area-weighted smooth normal should retain the tiny face influence");
 
+    // A tiny side triangle must not rotate a large cab panel's normal by
+    // ~45 degrees: accumulated face normals must be area-weighted.
+    const std::vector<Vec3> mixed_nodes = {
+        {0, 0, 0}, {4, 0, 0}, {0, 0, 4}, {0, 0.1f, 0}, {0.1f, 0, 0}};
+    const std::vector<VertexBinding> mixed_bindings = {
+        {0, {0, 0}}, {1, {1, 0}}, {2, {0, 1}},
+        {3, {0, 0}}, {4, {0, 0}}};
+    const MeshFrame mixed = BuildMeshFrame(
+        mixed_nodes, mixed_bindings, {{0, 1, 2}, {0, 3, 4}});
+    Require(std::fabs(mixed.vertices[0].normal.y) > 0.99f,
+        "tiny triangle must not dominate cab normal");
+    Require(std::fabs(mixed.vertices[0].normal.z) < 0.01f,
+        "triangle normal must be weighted by doubled area");
+    Require(std::isfinite(mixed.vertices[0].normal.x),
+        "area-weighted vertex normal must remain finite");
+
     bool bad_triangle_rejected = false;
     try { BuildMeshFrame(nodes, bindings, {{0, 1, 99}}); }
     catch (const std::out_of_range&) { bad_triangle_rejected = true; }

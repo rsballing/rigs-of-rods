@@ -421,13 +421,19 @@ void ContentManager::InitManagedMaterials(std::string const & rg_name)
 {
     Ogre::String managed_materials_dir = PathCombine(App::sys_resources_dir->getStr(), "managed_materials");
 
+    // General vehicle/road and grass programs share the exact same
+    // PSSM cascade boundaries as the managed receivers. These programs are
+    // parsed even when shadows are disabled, so register the shared-parameter
+    // definition unconditionally before loading ordinary material packs.
+    if (rg_name == RGN_MANAGED_MATS)
+    {
+        ResourceGroupManager::getSingleton().addResourceLocation(
+            PathCombine(managed_materials_dir, "shadows/pssm/on/shared"), "FileSystem", rg_name);
+    }
+
     //Dirty, needs to be improved
     if (App::gfx_shadow_type->getEnum<GfxShadowType>() == GfxShadowType::PSSM)
     {
-        if (rg_name == RGN_MANAGED_MATS) // Only load shared resources on startup
-        {
-            ResourceGroupManager::getSingleton().addResourceLocation(PathCombine(managed_materials_dir, "shadows/pssm/on/shared"), "FileSystem", rg_name);
-        }
         ResourceGroupManager::getSingleton().addResourceLocation(PathCombine(managed_materials_dir, "shadows/pssm/on"), "FileSystem", rg_name);
     }
     else

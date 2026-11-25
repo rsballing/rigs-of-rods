@@ -59,6 +59,7 @@
 #include "Terrain.h"
 #include "Utils.h"
 #include <Overlay/OgreOverlaySystem.h>
+#include <RTShaderSystem/OgreRTShaderSystem.h>
 #ifdef USE_CAELUM
 #include <Caelum.h>
 #endif
@@ -212,6 +213,20 @@ int main(int argc, char *argv[])
         App::GetGfxScene()->GetSceneManager()->addRenderQueueListener(overlay_system);
         App::CreateCameraManager(); // Creates OGRE Camera
         App::GetGfxScene()->GetEnvMap().SetupEnvMap(); // Needs camera
+
+        // OGRE 14 TerrainMaterialGeneratorA creates its terrain programs via
+        // RTShaderSystem. Initialize this *after* the render system and main
+        // SceneManager exist, and *before* we load any terrain or materials.
+        if (!Ogre::RTShader::ShaderGenerator::initialize())
+        {
+            ErrorUtils::ShowError(_L("Startup error"),
+                                  _L("Failed to initialize OGRE 14 terrain shaders"));
+            return -1;
+        }
+        Ogre::RTShader::ShaderGenerator* shader_gen =
+            Ogre::RTShader::ShaderGenerator::getSingletonPtr();
+        shader_gen->setShaderCachePath(App::sys_cache_dir->getStr());
+        shader_gen->addSceneManager(App::GetGfxScene()->GetSceneManager());
 
         App::CreateGuiManager(); // Needs scene manager
 

@@ -98,6 +98,50 @@ class Ogre14MigrationContract(unittest.TestCase):
         self.assertIn('"Warning texture",', warning)
         self.assertIn('CVAR_ARCHIVE | CVAR_TYPE_BOOL,    "true"); // OGRE14 DX11', warning)
 
+    def test_native_ogre14_shadow_shader_pipeline(self):
+        main = source("source/main/main.cpp")
+        shadow = source("source/main/gfx/ShadowManager.cpp")
+        terrain = source("source/main/terrain/TerrainGeometryManager.cpp")
+        caster = source("resources/OgreCore/Shadow.material")
+        programs = source("resources/OgreCore/ShadowVolumeExtude.program")
+        pssm_shader = source("resources/rtshader/SGXLib_IntegratedPSSM.glsl")
+
+        self.assertIn("ShaderGenerator::initialize()", main)
+        self.assertIn("ShaderGenerator::getSingletonPtr()", main)
+        self.assertIn("ContentManager::ResourcePack::RTSHADER", main)
+        self.assertLess(
+            main.index("ContentManager::ResourcePack::RTSHADER"),
+            main.index("ShaderGenerator::initialize()"),
+        )
+        self.assertIn("SHADOWTYPE_TEXTURE_MODULATIVE_INTEGRATED", shadow)
+        self.assertIn('getByName("Ogre/TextureShadowCaster")', shadow)
+        self.assertIn("PF_X8B8G8R8", shadow)
+        self.assertNotIn("PF_FLOAT32_R", shadow)
+        self.assertNotIn("matProfile->setReceiveDynamicShadowsDepth(", shadow)
+        self.assertNotIn("matProfile->setReceiveDynamicShadowsDepth(", terrain)
+        self.assertNotIn("matProfile->setGlobalColourMapEnabled(", terrain)
+        self.assertIn("page_terrain->setGlobalColourMapEnabled(true)", terrain)
+        self.assertIn("material Ogre/TextureShadowCaster", caster)
+        self.assertIn("Ogre/ShadowBlendVP", programs)
+        self.assertIn("SGX_ComputeShadowFactor_PSSM3", pssm_shader)
+
+        for resource in (
+            "resources/OgreCore/TerrainSurface.glsl",
+            "resources/OgreCore/TerrainTransforms.glsl",
+            "resources/OgreCore/OgreUnifiedShader.h",
+            "resources/OgreCore/GLSL_GL3Support.glsl",
+            "resources/OgreCore/HLSL_SM4Support.hlsl",
+            "resources/OgreCore/ShadowBlend.vert",
+            "resources/OgreCore/ShadowBlend.frag",
+            "resources/OgreCore/ShadowExtrudeDirLight.vert",
+            "resources/OgreCore/ShadowExtrudeDirLightFinite.vert",
+            "resources/OgreCore/ShadowExtrudePointLight.vert",
+            "resources/OgreCore/ShadowExtrudePointLightFinite.vert",
+            "resources/rtshader/SGXLib_NormalMap.glsl",
+            "resources/rtshader/FFPLib_AlphaTest.glsl",
+        ):
+            self.assertTrue((ROOT / resource).is_file(), resource)
+
     def test_preserve_existing_graphics_controls_and_shadow_code(self):
         ui = source("source/main/gui/panels/GUI_GameSettings.cpp")
         menu = source("source/main/gui/panels/GUI_GameMainMenu.cpp")

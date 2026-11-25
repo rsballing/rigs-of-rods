@@ -159,6 +159,18 @@ jobs:
         shell: pwsh
         run: |
           Copy-Item 'doc/GRAPHICS_PREVIEW_WINDOWS.md' 'redist/READ_THIS_FIRST_GRAPHICS_PREVIEW.md' -Force
+      - name: Include build revision and optional offline diagnostic tool
+        shell: pwsh
+        run: |
+          @(
+            'Rigs of Rods experimental graphics preview'
+            "GitHub source commit: $env:GITHUB_SHA"
+            "Build run: $env:GITHUB_RUN_NUMBER"
+            "GitHub ref: $env:GITHUB_REF"
+            "Built (UTC): $((Get-Date).ToUniversalTime().ToString('yyyy-MM-dd HH:mm:ss'))"
+          ) | Set-Content 'redist/GRAPHICS_BUILD_INFO.txt' -Encoding UTF8
+          Copy-Item 'tools/windows/RoR-Graphics-Diagnostics.ps1' 'redist/RoR-Graphics-Diagnostics.ps1' -Force
+
       - name: Upload build to itch.io
         env:
           BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}

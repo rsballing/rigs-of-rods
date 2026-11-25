@@ -96,7 +96,11 @@ int ShadowManager::updateShadowTechnique()
 
 void ShadowManager::processPSSM()
 {
-    App::GetGfxScene()->GetSceneManager()->setShadowTechnique(Ogre::SHADOWTYPE_TEXTURE_ADDITIVE_INTEGRATED);
+    // OGRE 14: use native integrated shadow mapping, compatible with
+    // TerrainMaterialGeneratorA's RTShaderSystem PSSM receiver.
+    // The older additive depth shader remains on graphics-overhaul.
+    App::GetGfxScene()->GetSceneManager()->setShadowTechnique(
+        Ogre::SHADOWTYPE_TEXTURE_MODULATIVE_INTEGRATED);
 
     // Re-read quality when PSSM is configured, including after terrain reloads.
     PSSM_Shadows.Quality = App::gfx_shadow_quality->getInt();
@@ -112,35 +116,42 @@ void ShadowManager::processPSSM()
     App::GetGfxScene()->GetSceneManager()->setShadowCasterRenderBackFaces(true);
 
     //Caster is set via materials
-    MaterialPtr shadowMat = MaterialManager::getSingleton().getByName("Ogre/shadow/depth/caster");
+    MaterialPtr shadowMat =
+        MaterialManager::getSingleton().getByName("Ogre/TextureShadowCaster");
+    if (!shadowMat)
+    {
+        OGRE_EXCEPT(Ogre::Exception::ERR_ITEM_NOT_FOUND,
+            "OGRE14 shadow caster material is missing; check OgreCore resource pack",
+            "RoR::ShadowManager::processPSSM");
+    }
     App::GetGfxScene()->GetSceneManager()->setShadowTextureCasterMaterial(shadowMat);
 
     if (PSSM_Shadows.Quality == 3)
     {
-        App::GetGfxScene()->GetSceneManager()->setShadowTextureConfig(0, 4096, 4096, PF_FLOAT32_R);
-        App::GetGfxScene()->GetSceneManager()->setShadowTextureConfig(1, 3072, 3072, PF_FLOAT32_R);
-        App::GetGfxScene()->GetSceneManager()->setShadowTextureConfig(2, 2048, 2048, PF_FLOAT32_R);
+        App::GetGfxScene()->GetSceneManager()->setShadowTextureConfig(0, 4096, 4096, PF_X8B8G8R8);
+        App::GetGfxScene()->GetSceneManager()->setShadowTextureConfig(1, 3072, 3072, PF_X8B8G8R8);
+        App::GetGfxScene()->GetSceneManager()->setShadowTextureConfig(2, 2048, 2048, PF_X8B8G8R8);
         PSSM_Shadows.lambda = 0.965f;
     }
     else if (PSSM_Shadows.Quality == 2)
     {
-        App::GetGfxScene()->GetSceneManager()->setShadowTextureConfig(0, 3072, 3072, PF_FLOAT32_R);
-        App::GetGfxScene()->GetSceneManager()->setShadowTextureConfig(1, 2048, 2048, PF_FLOAT32_R);
-        App::GetGfxScene()->GetSceneManager()->setShadowTextureConfig(2, 2048, 2048, PF_FLOAT32_R);
+        App::GetGfxScene()->GetSceneManager()->setShadowTextureConfig(0, 3072, 3072, PF_X8B8G8R8);
+        App::GetGfxScene()->GetSceneManager()->setShadowTextureConfig(1, 2048, 2048, PF_X8B8G8R8);
+        App::GetGfxScene()->GetSceneManager()->setShadowTextureConfig(2, 2048, 2048, PF_X8B8G8R8);
         PSSM_Shadows.lambda = 0.97f;
     }
     else if (PSSM_Shadows.Quality == 1)
     {
-        App::GetGfxScene()->GetSceneManager()->setShadowTextureConfig(0, 2048, 2048, PF_FLOAT32_R);
-        App::GetGfxScene()->GetSceneManager()->setShadowTextureConfig(1, 1024, 1024, PF_FLOAT32_R);
-        App::GetGfxScene()->GetSceneManager()->setShadowTextureConfig(2, 1024, 1024, PF_FLOAT32_R);
+        App::GetGfxScene()->GetSceneManager()->setShadowTextureConfig(0, 2048, 2048, PF_X8B8G8R8);
+        App::GetGfxScene()->GetSceneManager()->setShadowTextureConfig(1, 1024, 1024, PF_X8B8G8R8);
+        App::GetGfxScene()->GetSceneManager()->setShadowTextureConfig(2, 1024, 1024, PF_X8B8G8R8);
         PSSM_Shadows.lambda = 0.975f;
     }
     else
     {
-        App::GetGfxScene()->GetSceneManager()->setShadowTextureConfig(0, 1024, 1024, PF_FLOAT32_R);
-        App::GetGfxScene()->GetSceneManager()->setShadowTextureConfig(1, 1024, 1024, PF_FLOAT32_R);
-        App::GetGfxScene()->GetSceneManager()->setShadowTextureConfig(2, 512, 512, PF_FLOAT32_R);
+        App::GetGfxScene()->GetSceneManager()->setShadowTextureConfig(0, 1024, 1024, PF_X8B8G8R8);
+        App::GetGfxScene()->GetSceneManager()->setShadowTextureConfig(1, 1024, 1024, PF_X8B8G8R8);
+        App::GetGfxScene()->GetSceneManager()->setShadowTextureConfig(2, 512, 512, PF_X8B8G8R8);
         PSSM_Shadows.lambda = 0.98f;
     }
 

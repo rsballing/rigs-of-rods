@@ -43,6 +43,22 @@ int main()
     Require(std::isfinite(degenerate.vertices[0].normal.y), "mesh validation failed");
     Require(Near(degenerate.vertices[0].normal.y, 0.0f), "mesh validation failed");
 
+    // A very small adjacent face should not dominate the smooth vertex
+    // normal of a large surface. This is important for bent and torn cabs.
+    const std::vector<Vec3> unequal_nodes = {
+        {0.f, 0.f, 0.f}, {4.f, 0.f, 0.f}, {0.f, 0.f, 4.f},
+        {0.f, 0.1f, 0.f}, {0.f, 0.f, 0.1f}};
+    const std::vector<VertexBinding> unequal_bindings = {
+        {0,{0,0}}, {1,{0,0}}, {2,{0,0}},
+        {3,{0,0}}, {4,{0,0}}};
+    const MeshFrame unequal = BuildMeshFrame(
+        unequal_nodes, unequal_bindings, {{0, 2, 1}, {0, 3, 4}});
+    Require(unequal.vertices[0].normal.y > 0.99f,
+        "small face incorrectly outweighs broad surface normal");
+    Require(unequal.vertices[0].normal.x > 0.f &&
+            unequal.vertices[0].normal.x < 0.01f,
+        "area-weighted smooth normal should retain the tiny face influence");
+
     bool bad_triangle_rejected = false;
     try { BuildMeshFrame(nodes, bindings, {{0, 1, 99}}); }
     catch (const std::out_of_range&) { bad_triangle_rejected = true; }

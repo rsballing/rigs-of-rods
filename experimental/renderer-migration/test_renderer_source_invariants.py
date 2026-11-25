@@ -27,6 +27,25 @@ class RendererSourceContracts(unittest.TestCase):
         self.assertIn("camDepth > pssmSplitPoints.", cpp)
         self.assertIn("ShaderHelper::getChannel(numTextures - 1)", cpp)
 
+    def test_general_and_grass_shaders_share_live_pssm_splits(self):
+        general = load("resources/materials/general.program")
+        grass = load("resources/materials/grass.material")
+        shared = load("resources/managed_materials/shadows/pssm/on/shared/pssm_shared.program")
+        manager = load("source/main/gfx/ShadowManager.cpp")
+        resources = load("source/main/resources/ContentManager.cpp")
+        self.assertEqual(2, general.count("shared_params_ref pssm_params"))
+        self.assertEqual(1, grass.count("shared_params_ref pssm_params"))
+        self.assertNotIn("param_named pssmSplitPoints float4 1.0 187 774 10000.0", general)
+        self.assertNotIn("param_named pssmSplitPoints float4 1.0 187 774 10000.0", grass)
+        self.assertIn("shared_param_named pssmSplitPoints float4", shared)
+        self.assertIn('getSharedParameters("pssm_params")', manager)
+        self.assertIn('setNamedConstant("pssmSplitPoints", splitPoints)', manager)
+        # Material scripts parse in non-PSSM mode as well: the shared
+        # parameter definition must still be registered before they load.
+        shared_registration = resources.index('"shadows/pssm/on/shared"')
+        pssm_branch = resources.index("if (App::gfx_shadow_type->getEnum<GfxShadowType>()")
+        self.assertLess(shared_registration, pssm_branch)
+
     def test_managed_shadows_end_at_last_cascade(self):
         cpp = load("source/main/gfx/ShadowManager.cpp")
         self.assertIn("for (int i = 0; i < 4; ++i)", cpp)

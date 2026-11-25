@@ -44,6 +44,20 @@ class RendererSourceContracts(unittest.TestCase):
         self.assertIn("dot(surfaceNormal, halfAngle)", receiver)
         self.assertNotIn("lit(dot(normal, lightVec)", receiver)
 
+    def test_managed_vehicle_pssm_depth_samplers_use_white_borders(self):
+        source = load("resources/managed_materials/shadows/pssm/on/shadows.material")
+        import re
+        samplers = re.findall(
+            r"texture_unit shadow_tex[012]\\s*\\{(.*?)\\}", source, re.DOTALL
+        )
+        self.assertEqual(3, len(samplers))
+        for sampler in samplers:
+            self.assertIn("content_type shadow", sampler)
+            self.assertIn("tex_address_mode border", sampler)
+            self.assertIn("tex_border_colour 1.0 1.0 1.0 1.0", sampler)
+            self.assertIn("filtering point point none", sampler)
+            self.assertNotIn("tex_address_mode clamp", sampler)
+
     def test_manual_pssm_shadow_samplers_use_point_filter_and_white_border(self):
         # Bilinear depth filtering before a manual depth comparison creates
         # false shadows; clamping the shadowmap to its last texel smears

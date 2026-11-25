@@ -2380,8 +2380,6 @@ void ActorSpawner::AddBaseFlare(RigDef::FlareBase & def)
             flare.light->setAttenuation(200, 0.9, 0, 0);
             flare.light->setSpotlightRange( Ogre::Degree(35), Ogre::Degree(45) );
             flare.light->setCastShadows(false);
-        Ogre::SceneNode* flare_light_node = App::GetGfxScene()->GetSceneManager()->getRootSceneNode()->createChildSceneNode();
-        flare_light_node->attachObject(flare.light);
         }
         else if (flare.fl_type == FlareType::HIGH_BEAM)
         {
@@ -2456,6 +2454,11 @@ void ActorSpawner::AddBaseFlare(RigDef::FlareBase & def)
         flare.light->setType(Ogre::Light::LT_SPOTLIGHT);
         flare.light->setSpotlightRange( Ogre::Degree(35), Ogre::Degree(45) );
         flare.light->setCastShadows(false);
+        // Every flare type, not only headlights, requires a parent scene node
+        // for OGRE14 position/direction updates.
+        Ogre::SceneNode* flare_light_node = App::GetGfxScene()->GetSceneManager()
+            ->getRootSceneNode()->createChildSceneNode();
+        flare_light_node->attachObject(flare.light);
     }
     m_actor->ar_flares.push_back(flare);
 }

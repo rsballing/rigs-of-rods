@@ -2,6 +2,7 @@
 #include "DeformableMeshFrame.h"
 #include <cmath>
 #include <iostream>
+#include <limits>
 #include <stdexcept>
 
 using namespace RoR::RendererMigration;
@@ -87,6 +88,24 @@ int main()
     catch (const std::out_of_range&) { bad_node_rejected = true; }
     Require(bad_node_rejected, "mesh validation failed");
 
-    std::cout << "PASS: renderer-independent deformable mesh frame tests\n";
+    // Two finite, same-sign positions can overflow during midpoint
+    // calculation unless each summand is scaled before addition.
+    const float large = std::numeric_limits<float>::max() * 0.75f;
+    const std::vector<Vec3> large_nodes = {
+        {large, large, large}, {large, large, large}
+    };
+    const std::vector<VertexBinding> large_bindings = {
+        {0, {0, 0}}, {1, {1, 0}}
+    };
+    const MeshFrame large_frame = BuildMeshFrame(
+        large_nodes, large_bindings, {});
+    Require(std::isfinite(large_frame.origin.x), "large mesh origin overflowed");
+    Require(std::isfinite(large_frame.origin.y), "large mesh origin overflowed");
+    Require(std::isfinite(large_frame.origin.z), "large mesh origin overflowed");
+    Require(large_frame.origin.x == large, "large mesh origin inaccurate");
+    Require(large_frame.vertices[0].position.x == 0.f,
+        "large mesh relative position inaccurate");
+
+    std::cout << "PASS: renderer-independent deformable mesh frame tests\\n";
     return 0;
 }

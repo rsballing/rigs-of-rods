@@ -79,7 +79,7 @@ fragment_program grassFP cg
 		param_named_auto invShadowMapSize1	inverse_texture_size 1
 		param_named_auto invShadowMapSize2	inverse_texture_size 2
 		//param_named pssmSplitPoints MANUAL 0
-		param_named pssmSplitPoints float4 1.0 187 774 10000.0
+		shared_params_ref pssm_params
 	}
 }
 

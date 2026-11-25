@@ -22,6 +22,7 @@
 #include "FlexObj.h"
 
 #include "ApproxMath.h" // fast_normalise()
+#include <cmath>
 #include "GfxActor.h"
 
 #include <Ogre.h>
@@ -197,26 +198,34 @@ Vector3 FlexObj::UpdateMesh()
     //accumulate normals per triangle
     for (size_t i=0; i<m_index_count/3; i++)
     {
-        Vector3 v1, v2;
-        v1=all_nodes[m_vertex_nodes[m_indices[i*3+1]]].AbsPosition-all_nodes[m_vertex_nodes[m_indices[i*3]]].AbsPosition;
-        v2=all_nodes[m_vertex_nodes[m_indices[i*3+2]]].AbsPosition-all_nodes[m_vertex_nodes[m_indices[i*3]]].AbsPosition;
-        v1=v1.crossProduct(v2);
-        float s=v1.length();
+        const Vector3 edge1 = all_nodes[m_vertex_nodes[m_indices[i*3+1]]].AbsPosition
+            - all_nodes[m_vertex_nodes[m_indices[i*3]]].AbsPosition;
+        const Vector3 edge2 = all_nodes[m_vertex_nodes[m_indices[i*3+2]]].AbsPosition
+            - all_nodes[m_vertex_nodes[m_indices[i*3]]].AbsPosition;
+        const Vector3 face_normal = edge1.crossProduct(edge2);
+        const float doubled_area = face_normal.length();
 
-        //avoid large tris
-        if (s>m_s_ref[i])
+        // Reject invalid/degenerate faces so that they cannot introduce NaN
+        // normals while the cab mesh deforms or a triangle folds over itself.
+        if (!std::isfinite(doubled_area) || doubled_area <= 1e-10f)
+            continue;
+
+        // Match the existing overstretched-triangle collapse rule, but do
+        // not include the rejected face's old (uncollapsed) normal in
+        // adjacent vertices. Otherwise collapsed panels cause stray glints.
+        if (doubled_area > m_s_ref[i])
         {
             m_vertices[m_indices[i*3+1]].position=m_vertices[m_indices[i*3]].position+Vector3(0.1,0,0);
             m_vertices[m_indices[i*3+2]].position=m_vertices[m_indices[i*3]].position+Vector3(0,0,0.1);
+            continue;
         }
 
-        if (s == 0)
-            continue;
-
-        v1=v1/s;
-        m_vertices[m_indices[i*3]].normal+=v1;
-        m_vertices[m_indices[i*3+1]].normal+=v1;
-        m_vertices[m_indices[i*3+2]].normal+=v1;
+        // Use area-weighted face normals, as in the renderer-neutral mesh
+        // prototype. Small triangles should not steer the lighting of much
+        // larger cab panels equally strongly just because they share nodes.
+        m_vertices[m_indices[i*3]].normal += face_normal;
+        m_vertices[m_indices[i*3+1]].normal += face_normal;
+        m_vertices[m_indices[i*3+2]].normal += face_normal;
     }
     //normalize
     for (size_t i=0; i<m_vertex_count; i++)

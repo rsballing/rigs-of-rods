@@ -4,6 +4,9 @@ project(RoRRendererMigrationPrototype LANGUAGES CXX)
 add_executable(test_mesh_frame test_mesh_frame.cpp)
 target_compile_features(test_mesh_frame PRIVATE cxx_std_11)
 
+add_executable(test_cab_mesh_safety test_cab_mesh_safety.cpp)
+target_compile_features(test_cab_mesh_safety PRIVATE cxx_std_11)
+
 add_executable(fuzz_mesh_frame fuzz_mesh_frame.cpp)
 target_compile_features(fuzz_mesh_frame PRIVATE cxx_std_11)
 
@@ -15,6 +18,7 @@ target_compile_features(test_shadow_quality PRIVATE cxx_std_11)
 
 enable_testing()
 add_test(NAME deformable_mesh_frame COMMAND test_mesh_frame)
+add_test(NAME safe_cab_mesh_damage COMMAND test_cab_mesh_safety)
 add_test(NAME fuzz_deformable_mesh_frame COMMAND fuzz_mesh_frame)
 add_test(NAME sky_lighting_math COMMAND test_sky_lighting)
 add_test(NAME shadow_quality_policy COMMAND test_shadow_quality)

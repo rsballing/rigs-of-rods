@@ -102,8 +102,8 @@ bool SkyXManager::UpdateSkyLight()
 	mLight0 = App::GetGfxScene()->GetSceneManager()->getLight("Light0");
 	mLight1 = App::GetGfxScene()->GetSceneManager()->getLight("Light1");
 
-	mLight0->setPosition(sunPos*0.02);
-	mLight1->setDirection(lightDir);
+	mLight0->getParentSceneNode()->setPosition(sunPos*0.02);
+	mLight1->getParentSceneNode()->setDirection(lightDir);
     if (App::GetGameContext()->GetTerrain()->getWater())
     {
         App::GetGameContext()->GetTerrain()->getGfxWater()->WaterSetSunPosition(sunPos*0.1);
@@ -139,7 +139,7 @@ bool SkyXManager::UpdateSkyLight()
 		// Restore the original SkyX ambient light immediately when toggled off.
 		App::GetGfxScene()->GetSceneManager()->setAmbientLight(Ogre::ColourValue(0.35f, 0.35f, 0.35f));
 	}
-	mLight1->setPosition(100,100,100);
+	mLight1->getParentSceneNode()->setPosition(100,100,100);
 
 	if (mBasicController->getTime().x > 12)
 	{
@@ -204,6 +204,14 @@ bool SkyXManager::InitLight()
 
 	mLight1 = App::GetGfxScene()->GetSceneManager()->createLight("Light1");
 	mLight1->setType(Ogre::Light::LT_DIRECTIONAL);
+
+    // OGRE14: both SkyX lights need parent scene nodes for transforms.
+    Ogre::SceneNode* sun_node = App::GetGfxScene()->GetSceneManager()
+        ->getRootSceneNode()->createChildSceneNode();
+    sun_node->attachObject(mLight0);
+    Ogre::SceneNode* sunlight_node = App::GetGfxScene()->GetSceneManager()
+        ->getRootSceneNode()->createChildSceneNode();
+    sunlight_node->attachObject(mLight1);
 
 	return true;
 }

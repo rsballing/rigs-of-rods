@@ -131,6 +131,11 @@ jobs:
         shell: pwsh
         run: |
           ./tools/windows/Add-LegacyDirectX.ps1 -DestinationDirectory './redist'
+
+      - name: Validate Windows renderer and shader distribution
+        shell: pwsh
+        run: |
+          ./tools/windows/Test-RoRWindowsPackage.ps1 -Directory './redist'
       - name: Upload build to itch.io
         env:
           BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}

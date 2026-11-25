@@ -95,7 +95,7 @@ void Console::cVarSetupBuiltins()
     App::diag_log_beam_deform    = this->cVarCreate("diag_log_beam_deform",    "Beam Deform Debug",          CVAR_ARCHIVE | CVAR_TYPE_BOOL,    "false");
     App::diag_log_beam_trigger   = this->cVarCreate("diag_log_beam_trigger",   "Trigger Debug",              CVAR_ARCHIVE | CVAR_TYPE_BOOL,    "false");
     App::diag_simple_materials   = this->cVarCreate("diag_simple_materials",    "SimpleMaterials",           CVAR_ARCHIVE | CVAR_TYPE_BOOL,    "false");
-    App::diag_warning_texture    = this->cVarCreate("diag_warning_texture",    "Warning texture",            CVAR_ARCHIVE | CVAR_TYPE_BOOL,    "false");
+    App::diag_warning_texture    = this->cVarCreate("diag_warning_texture",    "Warning texture",            CVAR_ARCHIVE | CVAR_TYPE_BOOL,    "true"); // OGRE14 DX11: avoid overwriting warning texture during startup
     App::diag_hide_broken_beams  = this->cVarCreate("diag_hide_broken_beams",  "Hide broken beams",          CVAR_ARCHIVE | CVAR_TYPE_BOOL,    "false");
     App::diag_hide_beam_stress   = this->cVarCreate("diag_hide_beam_stress",   "Hide beam stress",           CVAR_ARCHIVE | CVAR_TYPE_BOOL,    "true");
     App::diag_hide_wheel_info    = this->cVarCreate("diag_hide_wheel_info",    "Hide wheel info",            CVAR_ARCHIVE | CVAR_TYPE_BOOL,    "true");

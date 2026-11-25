@@ -136,6 +136,10 @@ jobs:
         shell: pwsh
         run: |
           ./tools/windows/Test-RoRWindowsPackage.ps1 -Directory './redist'
+      - name: Smoke-test Windows renderer DLL loader dependencies
+        shell: pwsh
+        run: |
+          ./tools/windows/Test-RendererPlugins.ps1 -DistributionDirectory './redist'
       - name: Upload build to itch.io
         env:
           BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}

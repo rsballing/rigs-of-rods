@@ -172,6 +172,7 @@ set(SOURCE_FILES
         physics/flex/FlexFactory.{h,cpp}
         physics/flex/FlexMesh.{h,cpp}
         physics/flex/FlexMeshWheel.{h,cpp}
+        physics/flex/CabMeshSafety.h
         physics/flex/FlexObj.{h,cpp}
         physics/flex/Locator_t.h
         physics/water/Buoyance.{h,cpp}

@@ -155,6 +155,10 @@ jobs:
           $p = Start-Process -FilePath $exe -ArgumentList '--ci-load-check' -WorkingDirectory $wd -Wait -PassThru
           if ($p.ExitCode -ne 0) { throw "Windows executable load check failed: exit code $($p.ExitCode)" }
           Write-Host "PASS: Windows loader resolved all RoR.exe static imports"
+      - name: Include graphics-preview setup and comparison guide
+        shell: pwsh
+        run: |
+          Copy-Item 'doc/GRAPHICS_PREVIEW_WINDOWS.md' 'redist/READ_THIS_FIRST_GRAPHICS_PREVIEW.md' -Force
       - name: Upload build to itch.io
         env:
           BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}

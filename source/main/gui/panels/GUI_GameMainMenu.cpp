@@ -183,6 +183,7 @@ void GameMainMenu::DrawMenuPanel()
                 App::gfx_shadow_type->setVal(static_cast<int>(GfxShadowType::PSSM));
                 App::gfx_shadow_quality->setVal(2);
                 App::gfx_shadow_distance->setVal(700);
+                App::gfx_terrain_low_lod_shadows->setVal(true);
                 App::gfx_reduce_shadows->setVal(false);
                 if (App::gfx_sky_mode->getEnum<GfxSkyMode>() == GfxSkyMode::SKYX)
                     App::gfx_natural_sunlight->setVal(true);
@@ -192,6 +193,7 @@ void GameMainMenu::DrawMenuPanel()
                 App::gfx_shadow_type->setVal(static_cast<int>(GfxShadowType::PSSM));
                 App::gfx_shadow_quality->setVal(2);
                 App::gfx_shadow_distance->setVal(350);
+                App::gfx_terrain_low_lod_shadows->setVal(false);
                 App::gfx_reduce_shadows->setVal(true);
                 App::gfx_natural_sunlight->setVal(false);
             }

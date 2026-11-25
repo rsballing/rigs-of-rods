@@ -128,10 +128,13 @@ inline MeshFrame BuildMeshFrame(const std::vector<Vec3>& nodes,
         if (magnitude_sq <= 1e-20f)
             continue; // No NaNs from degenerate triangles
 
-        const Vec3 normal = n / std::sqrt(magnitude_sq);
-        frame.vertices[triangle.a].normal = frame.vertices[triangle.a].normal + normal;
-        frame.vertices[triangle.b].normal = frame.vertices[triangle.b].normal + normal;
-        frame.vertices[triangle.c].normal = frame.vertices[triangle.c].normal + normal;
+        // Accumulate area-weighted face normals. Equal weighting makes
+        // a tiny triangle pull the normal as strongly as a large face,
+        // which creates conspicuous lighting artifacts on deformable cabs.
+        // The final pass normalizes each accumulated vertex normal.
+        frame.vertices[triangle.a].normal = frame.vertices[triangle.a].normal + n;
+        frame.vertices[triangle.b].normal = frame.vertices[triangle.b].normal + n;
+        frame.vertices[triangle.c].normal = frame.vertices[triangle.c].normal + n;
     }
 
     for (Vertex& vertex : frame.vertices)

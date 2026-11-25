@@ -35,6 +35,17 @@ class RendererSourceContracts(unittest.TestCase):
         self.assertIn("else if (uv.z <= pssmSplitPoints.w)", shader)
         self.assertIn("shadowing = 1.0f;", shader)
 
+    def test_general_and_grass_shadows_stop_at_last_cascade(self):
+        general = load("resources/materials/general.cg")
+        grass = load("resources/materials/grass.cg")
+        # These shaders are used by specialized map materials, not the
+        # default managed receiver or terrain PSSM generator.
+        self.assertEqual(2, general.count("else if (IN.uv.z <= pssmSplitPoints.w)"))
+        self.assertIn("else if (uv.z <= pssmSplitPoints.w)", grass)
+        self.assertEqual(2, general.count(
+            "diffuseTex.rgb * ambient + (diffC + specC) * shadowing;"))
+        self.assertNotIn("0.25f + 0.75f * shadowing", general)
+
     def test_managed_material_shadows_suppress_only_direct_lighting(self):
         shader = load("resources/managed_materials/shadows/pssm/on/pssm.cg")
         self.assertIn("shininess * 52) * shadowing;", shader)

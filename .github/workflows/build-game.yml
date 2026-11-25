@@ -140,6 +140,13 @@ jobs:
         shell: pwsh
         run: |
           ./tools/windows/Test-RendererPlugins.ps1 -DistributionDirectory './redist'
+      # Experimental compile-only test, report failures without blocking release
+      # until legacy Cg profile compatibility has been validated on CI.
+      - name: Compile managed PSSM shaders with packaged Cg runtime
+        shell: pwsh
+        continue-on-error: true
+        run: |
+          python ./tools/windows/Test-CgShaders.py ./redist
       - name: Upload build to itch.io
         env:
           BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}

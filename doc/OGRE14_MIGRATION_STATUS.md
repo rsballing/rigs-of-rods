@@ -2,7 +2,7 @@
 
 **Branch:** `ogre14-migration` (forked from `graphics-overhaul`)
 
-**Status:** Dependency selection and initial source compatibility work only.
+**Status:** Source migration with native PSSM shader resources; Windows and GPU verification pending.
 **No successful complete Windows executable or GPU validation is claimed.**
 
 ## Scope
@@ -93,6 +93,43 @@ until all the following are verified:
 - The original `graphics-overhaul` installation remains unaffected.
 
 **Fallback:** `graphics-overhaul` (OGRE 1.11.6.1) until the above pass.
+
+## Native OGRE 14 shadow compatibility layer (November 25, 2026)
+
+The original `TerrainPSSMMaterialGenerator` source is no longer compiled on
+this experimental branch: OGRE 14's `TerrainMaterialGeneratorA` and
+`RTShaderSystem` replace its terrain shader generation.
+
+Changes now implemented:
+
+- Initialize `Ogre::RTShader::ShaderGenerator` after renderer/scene setup
+  and before terrain creation. Register the `rtshader` resource pack for
+  generated programs during startup.
+- Port OGRE14 `TerrainSurface.glsl`, `TerrainTransforms.glsl`,
+  GLSL/HLSL compatibility helpers, modern FFPLib/SGXLib dependencies and
+  the `SGXLib_IntegratedPSSM.glsl` shadow receiver.
+- Use the OGRE14 `Ogre/TextureShadowCaster` material and its shader/program
+  resources, `SHADOWTYPE_TEXTURE_MODULATIVE_INTEGRATED`, and
+  `PF_X8B8G8R8` shadow maps. Retain the original **three PSSM cascades**,
+  quality-based map resolutions, shadow distance, and split calculations.
+- Eliminate old `setReceiveDynamicShadowsDepth` and
+  `setGlobalColourMapEnabled` profile calls that OGRE 14 removed.
+  Configure global colour maps per terrain page.
+- Replace the Windows distribution checker with checks for *configured*
+  renderers, plugin importability, UI packs, and required shaders inside
+  zipped or unpacked resource packs. Remove obsolete RTSS demo materials.
+
+This is a **new OGRE14-native shadow receiving/casting implementation**, not
+a visual claim. The existing managed-vehicle materials still reference old
+Cg receiver programs, which may require a separate material/shader port.
+The native terrain shader and the legacy managed-material shaders must be
+tested together on the same vehicle and map. A shadow cast onto stock terrain
+is not proof that custom map materials or transparent parts receive it.
+
+Acceptance conditions still unmet: full Windows C++ compile, linked DLL
+distribution, run-time shader compilation and an actual rendered screenshot.
+Only then can sun-shadow fidelity be compared with `graphics-overhaul`.
+The old branch is unchanged and remains the working fallback.
 
 ## Implementation checkpoint — November 25, 2026
 

@@ -59,6 +59,9 @@
 #include "Terrain.h"
 #include "Utils.h"
 #include <Overlay/OgreOverlaySystem.h>
+#ifdef USE_CAELUM
+#include <Caelum.h>
+#endif
 #include <ctime>
 #include <iomanip>
 #include <string>

@@ -22,6 +22,7 @@
 #include "FlexObj.h"
 
 #include "CabMeshSafety.h" // safe visual collapse policy
+#include <unordered_map>
 #include <cmath>
 #include "GfxActor.h"
 
@@ -73,11 +74,15 @@ FlexObj::FlexObj(RoR::GfxActor* gfx_actor, node_t* all_nodes, std::vector<CabTex
     {
         m_indices[i]=ComputeVertexPos(static_cast<int>(i/3), triangles[i], submesh_defs);
     }
-    // Only non-shared vertices may move during overstretched-face collapse.
-    // Shared vertices must retain their simulation-derived positions.
-    m_vertex_triangle_use_counts.assign(m_vertex_count, 0u);
+    // Count face references by *physics node*, not just by GPU vertex.
+    // UV seams may duplicate a node into several distinct GPU vertices;
+    // collapsing one of those copies would open a visible seam.
+    std::unordered_map<int, unsigned int> node_face_counts;
     for (size_t i = 0; i < m_index_count; ++i)
-        ++m_vertex_triangle_use_counts[m_indices[i]];
+        ++node_face_counts[m_vertex_nodes[m_indices[i]]];
+    m_vertex_triangle_use_counts.resize(m_vertex_count);
+    for (size_t i = 0; i < m_vertex_count; ++i)
+        m_vertex_triangle_use_counts[i] = node_face_counts[m_vertex_nodes[i]];
 
     m_s_ref=(float*)malloc(numtriangles*sizeof(float));
 

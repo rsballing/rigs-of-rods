@@ -165,6 +165,19 @@ void ShadowManager::processPSSM()
     // Supply near, two boundaries, and far for the managed material shader.
     setManagedMaterialSplitPoints(pssmSetup->getSplitPoints());
     App::GetGfxScene()->GetSceneManager()->setShadowCameraSetup(PSSM_Shadows.mPSSMSetup);
+
+    // Diagnostic evidence for A/B screenshots: users can confirm that
+    // changing settings actually rebuilt the terrain's PSSM configuration.
+    const auto& splits = pssmSetup->getSplitPoints();
+    Ogre::StringStream diag;
+    diag << "[RoR Graphics Preview] PSSM quality=" << PSSM_Shadows.Quality
+         << " distance=" << shadow_distance
+         << " terrain-PCF=" << ShadowQualitySettings::TerrainPcfWidth(PSSM_Shadows.Quality) << "x"
+         << ShadowQualitySettings::TerrainPcfWidth(PSSM_Shadows.Quality)
+         << " cascade-boundaries=";
+    for (size_t i = 0; i < splits.size(); ++i)
+        diag << (i ? "," : "") << splits[i];
+    Ogre::LogManager::getSingleton().logMessage(diag.str());
 }
 
 void ShadowManager::updatePSSM()

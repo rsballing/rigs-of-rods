@@ -168,6 +168,9 @@ void GfxWater::PrepareWater()
             m_refract_rtt_target = m_refract_rtt_targetPtr->getBuffer()->getRenderTarget();
             {
                 m_refract_cam = App::GetGfxScene()->GetSceneManager()->createCamera("RefractCam");
+                Ogre::SceneNode* refract_camera_node =
+                    App::GetGfxScene()->GetSceneManager()->getRootSceneNode()->createChildSceneNode();
+                refract_camera_node->attachObject(m_refract_cam);
                 m_refract_cam->setNearClipDistance(App::GetCameraManager()->GetCamera()->getNearClipDistance());
                 m_refract_cam->setFarClipDistance(App::GetCameraManager()->GetCamera()->getFarClipDistance());
                 m_refract_cam->setAspectRatio(
@@ -201,6 +204,9 @@ void GfxWater::PrepareWater()
         m_reflect_rtt_target = m_reflect_rtt_targetPtr->getBuffer()->getRenderTarget();
         {
             m_reflect_cam = App::GetGfxScene()->GetSceneManager()->createCamera("ReflectCam");
+            Ogre::SceneNode* reflect_camera_node =
+                App::GetGfxScene()->GetSceneManager()->getRootSceneNode()->createChildSceneNode();
+            reflect_camera_node->attachObject(m_reflect_cam);
             m_reflect_cam->setNearClipDistance(App::GetCameraManager()->GetCamera()->getNearClipDistance());
             m_reflect_cam->setFarClipDistance(App::GetCameraManager()->GetCamera()->getFarClipDistance());
             m_reflect_cam->setAspectRatio(
@@ -404,35 +410,35 @@ void GfxWater::UpdateWater()
     {
         if (m_frame_counter % 2 == 1 || m_waterplane_force_update_pos)
         {
-            m_reflect_cam->setOrientation(camera_rot);
-            m_reflect_cam->setPosition(camera_pos);
+            m_reflect_cam->getParentSceneNode()->setOrientation(camera_rot);
+            m_reflect_cam->getParentSceneNode()->setPosition(camera_pos);
             m_reflect_cam->setFOVy(camera_fov);
             m_reflect_rtt_target->update();
         }
         if (m_frame_counter % 2 == 0 || m_waterplane_force_update_pos)
         {
-            m_refract_cam->setOrientation(camera_rot);
-            m_refract_cam->setPosition(camera_pos);
+            m_refract_cam->getParentSceneNode()->setOrientation(camera_rot);
+            m_refract_cam->getParentSceneNode()->setPosition(camera_pos);
             m_refract_cam->setFOVy(camera_fov);
             m_refract_rtt_target->update();
         }
     }
     else if (App::gfx_water_mode->getEnum<GfxWaterMode>() == GfxWaterMode::FULL_HQ)
     {
-        m_reflect_cam->setOrientation(camera_rot);
-        m_reflect_cam->setPosition(camera_pos);
+        m_reflect_cam->getParentSceneNode()->setOrientation(camera_rot);
+        m_reflect_cam->getParentSceneNode()->setPosition(camera_pos);
         m_reflect_cam->setFOVy(camera_fov);
         m_reflect_rtt_target->update();
 
-        m_refract_cam->setOrientation(camera_rot);
-        m_refract_cam->setPosition(camera_pos);
+        m_refract_cam->getParentSceneNode()->setOrientation(camera_rot);
+        m_refract_cam->getParentSceneNode()->setPosition(camera_pos);
         m_refract_cam->setFOVy(camera_fov);
         m_refract_rtt_target->update();
     }
     else if (App::gfx_water_mode->getEnum<GfxWaterMode>() == GfxWaterMode::REFLECT)
     {
-        m_reflect_cam->setOrientation(camera_rot);
-        m_reflect_cam->setPosition(camera_pos);
+        m_reflect_cam->getParentSceneNode()->setOrientation(camera_rot);
+        m_reflect_cam->getParentSceneNode()->setPosition(camera_pos);
         m_reflect_cam->setFOVy(camera_fov);
         m_reflect_rtt_target->update();
     }

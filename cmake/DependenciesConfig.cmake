@@ -3,7 +3,11 @@ set(CMAKE_THREAD_PREFER_PTHREAD YES)
 find_package(Threads REQUIRED)
 
 # --- Ogre 3D graphics engine ---
-find_package(OGRE 1.11 REQUIRED COMPONENTS Bites Overlay Paging RTShaderSystem MeshLodGenerator Terrain)
+# OGRE 14 API / dependency migration is isolated on ogre14-migration.
+# Do not lower this requirement merely to get a successful configure step:
+# the build must use the modern renderer headers/libraries consistently.
+find_package(OGRE 14 REQUIRED COMPONENTS Bites Overlay Paging RTShaderSystem MeshLodGenerator Terrain)
+message(STATUS "RoR experimental renderer: OGRE ${OGRE_VERSION}")
 
 # --- Object Oriented Input System ---
 find_package(OIS REQUIRED)

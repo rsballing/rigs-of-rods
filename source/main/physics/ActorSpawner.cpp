@@ -1081,6 +1081,8 @@ void ActorSpawner::ProcessWing(RigDef::Wing & def)
                 left_flash_prop.pp_beacon_light[0]->setSpecularColour( Ogre::ColourValue(1.0, 1.0, 1.0));
                 left_flash_prop.pp_beacon_light[0]->setAttenuation(50.0, 1.0, 0.3, 0.0);
                 left_flash_prop.pp_beacon_light[0]->setCastShadows(false);
+                auto left_flash_prop_light_node = m_flares_parent_scenenode->createChildSceneNode();
+                left_flash_prop_light_node->attachObject(left_flash_prop.pp_beacon_light[0]);
                 left_flash_prop.pp_beacon_light[0]->setVisible(false);
                 //the flare billboard
                 left_flash_prop.pp_beacon_scene_node[0] = m_flares_parent_scenenode->createChildSceneNode(this->ComposeName("left flash flare @ wing", m_actor->ar_num_wings));
@@ -1144,6 +1146,8 @@ void ActorSpawner::ProcessWing(RigDef::Wing & def)
                 right_flash_prop.pp_beacon_light[0]->setSpecularColour( Ogre::ColourValue(1.0, 1.0, 1.0));
                 right_flash_prop.pp_beacon_light[0]->setAttenuation(50.0, 1.0, 0.3, 0.0);
                 right_flash_prop.pp_beacon_light[0]->setCastShadows(false);
+                auto right_flash_prop_light_node = m_flares_parent_scenenode->createChildSceneNode();
+                right_flash_prop_light_node->attachObject(right_flash_prop.pp_beacon_light[0]);
                 right_flash_prop.pp_beacon_light[0]->setVisible(false);
                 //the flare billboard
                 right_flash_prop.pp_beacon_scene_node[0] = m_flares_parent_scenenode->createChildSceneNode(this->ComposeName("right flash flare @ wing", m_actor->ar_num_wings));
@@ -1792,6 +1796,8 @@ void ActorSpawner::ProcessProp(RigDef::Prop & def)
             pp_beacon_light->setAttenuation(50.0, 1.0, 0.3, 0.0);
             pp_beacon_light->setSpotlightRange( Ogre::Degree(35), Ogre::Degree(45) );
             pp_beacon_light->setCastShadows(false);
+            auto beacon_light_node = m_flares_parent_scenenode->createChildSceneNode();
+            beacon_light_node->attachObject(pp_beacon_light);
             pp_beacon_light->setVisible(false);
             /* the flare billboard */
             prop.pp_media[1] = TuneupUtil::getTweakedPropMedia(m_actor->getWorkingTuneupDef(), prop_id, 1, def.special_prop_beacon.flare_material_name);
@@ -1823,6 +1829,8 @@ void ActorSpawner::ProcessProp(RigDef::Prop & def)
             pp_beacon_light->setSpecularColour( Ogre::ColourValue(1.0, 0.0, 0.0));
             pp_beacon_light->setAttenuation(50.0, 1.0, 0.3, 0.0);
             pp_beacon_light->setCastShadows(false);
+            auto beacon_light_node = m_flares_parent_scenenode->createChildSceneNode();
+            beacon_light_node->attachObject(pp_beacon_light);
             pp_beacon_light->setVisible(false);
             //the flare billboard
             auto flare_scene_node = m_flares_parent_scenenode->createChildSceneNode(this->ComposeName("redbeacon @ prop", prop_id));
@@ -1868,6 +1876,8 @@ void ActorSpawner::ProcessProp(RigDef::Prop & def)
                 prop.pp_beacon_light[k]->setAttenuation(50.0, 1.0, 0.3, 0.0);
                 prop.pp_beacon_light[k]->setSpotlightRange( Ogre::Degree(35), Ogre::Degree(45) );
                 prop.pp_beacon_light[k]->setCastShadows(false);
+                auto lightbar_light_node = m_flares_parent_scenenode->createChildSceneNode();
+                lightbar_light_node->attachObject(prop.pp_beacon_light[k]);
                 prop.pp_beacon_light[k]->setVisible(false);
                 //the flare billboard
                 prop.pp_beacon_scene_node[k] = m_flares_parent_scenenode->createChildSceneNode(this->ComposeName(fmt::format("lightbar {}/4 @ prop", k), prop_id));

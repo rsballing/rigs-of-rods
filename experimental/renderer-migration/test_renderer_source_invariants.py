@@ -48,7 +48,7 @@ class RendererSourceContracts(unittest.TestCase):
         source = load("resources/managed_materials/shadows/pssm/on/shadows.material")
         import re
         samplers = re.findall(
-            r"texture_unit shadow_tex[012]\\s*\\{(.*?)\\}", source, re.DOTALL
+            r"texture_unit shadow_tex[012]\s*\{(.*?)\}", source, re.DOTALL
         )
         self.assertEqual(3, len(samplers))
         for sampler in samplers:

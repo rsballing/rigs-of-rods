@@ -99,9 +99,11 @@ inline MeshFrame BuildMeshFrame(const std::vector<Vec3>& nodes,
     const Vec3& b = nodes[bindings[1].node_index];
 
     MeshFrame frame;
-    frame.origin = {(a.x + b.x) * 0.5f,
-                    (a.y + b.y) * 0.5f,
-                    (a.z + b.z) * 0.5f};
+    // Halve before adding: (a + b) can overflow even when the midpoint
+    // is representable (for example, two large positive node coordinates).
+    frame.origin = {a.x * 0.5f + b.x * 0.5f,
+                    a.y * 0.5f + b.y * 0.5f,
+                    a.z * 0.5f + b.z * 0.5f};
     frame.vertices.reserve(bindings.size());
     frame.triangle_indices.reserve(triangles.size() * 3);
 

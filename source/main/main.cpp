@@ -150,6 +150,13 @@ int main(int argc, char *argv[])
             return -1; // Error already displayed
         }
 
+#ifdef USE_CAELUM
+        // OGRE14-compatible Caelum is linked as a library, not dynamically
+        // loaded from plugins.cfg. Register it before resource initialization.
+        new Caelum::CaelumPlugin();
+        Caelum::CaelumPlugin::getSingleton().initialise();
+#endif
+
         Ogre::TextureManager::getSingleton().setDefaultNumMipmaps(5);
 
         // Deploy base config files from 'skeleton.zip'

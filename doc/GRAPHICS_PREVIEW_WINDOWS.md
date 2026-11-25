@@ -67,6 +67,34 @@ local `RoR-Graphics-Diagnostics.txt` on your Desktop. Optional
 it is skipped automatically when the extracted preview predates that feature.
 Do not run scripts from untrusted downloads.
 
+## If menu buttons are missing or off-screen
+
+The graphics preview includes an interface-visibility correction: the main
+menu is constrained to the display area (with scrolling at small sizes), and
+menu buttons use higher contrast. The Windows packaging check also verifies
+the font, MyGUI, wallpaper, and icon resource packs. This addresses plausible
+causes of hidden controls, but does **not** prove the interface works on every
+GPU/renderer combination.
+
+1. Extract the **entire** release ZIP to a new folder. Do not copy only
+   `RoR.exe` into an older installation.
+2. If you can see the background but **none** of the main menu controls, back
+   up `Documents\\My Games\\Rigs of Rods\\config` by **renaming** that
+   folder (for example, `config-backup`) while RoR is closed. Then launch
+   the preview again to regenerate settings. This preserves the old settings
+   for recovery and does not remove vehicle mods.
+3. In **Settings > Render system**, try Direct3D9, apply the change and
+   restart the game. Some GPUs behave differently under the Direct3D11 and
+   OpenGL plugins.
+4. If the main menu is visible but its lower buttons are outside the window,
+   reduce the UI scale in **Settings > UI** or use a larger window resolution.
+5. If only the *in-game HUD* is hidden (not the main menu), press `U` to
+   toggle the GUI; also check the **Show vehicle buttons menu** UI setting.
+6. If the problem persists, report the release/build number in
+   `GRAPHICS_BUILD_INFO.txt`, a screenshot of the missing controls,
+   the active renderer, and `RoR.log`. The bundled
+   `RoR-Graphics-Diagnostics.ps1` can report renderer setup.
+
 ## Testing the experimental graphics
 
 1. Extract the *entire* Windows release ZIP, not just `RoR.exe`.

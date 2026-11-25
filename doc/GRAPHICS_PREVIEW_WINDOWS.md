@@ -49,6 +49,24 @@ Documents\My Games\Rigs of Rods\mods
 
 If needed, obtain additional content packs from the RoR official repository/forums, extract the **outer content-pack archive** into the `mods` directory, and restart RoR. Do not unpack individual vehicle ZIPs unless the mod author explicitly instructs it. See https://docs.rigsofrods.org/gameplay/installing-content/
 
+## Optional offline diagnostic (no upload)
+
+The new ZIP includes `RoR-Graphics-Diagnostics.ps1` and
+`GRAPHICS_BUILD_INFO.txt` beside `RoR.exe`. To examine renderer configuration,
+DLL presence, graphics driver version and installed mod ZIP count, open Windows
+PowerShell **in the extracted game directory** and run:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\RoR-Graphics-Diagnostics.ps1
+```
+
+This script reads local settings but **does not launch the game, change
+settings, or transmit personal data**. Optional `-SaveReport` writes a
+local `RoR-Graphics-Diagnostics.txt` on your Desktop. Optional
+`-TestBinaryLoad` runs the new no-window binary dependency check;
+it is skipped automatically when the extracted preview predates that feature.
+Do not run scripts from untrusted downloads.
+
 ## Testing the experimental graphics
 
 1. Extract the *entire* Windows release ZIP, not just `RoR.exe`.

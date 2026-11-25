@@ -11,21 +11,21 @@ abstract technique Shadows/managed/base_receiver
 			texture_unit shadow_tex0
 			{
 				content_type shadow
-				tex_address_mode clamp
+				tex_address_mode border
 				tex_border_colour 1.0 1.0 1.0 1.0
 				filtering point point none
 			}
 			texture_unit shadow_tex1
 			{
 				content_type shadow
-				tex_address_mode clamp
+				tex_address_mode border
 				tex_border_colour 1.0 1.0 1.0 1.0
 				filtering point point none
 			}
 			texture_unit shadow_tex2
 			{
 				content_type shadow
-				tex_address_mode clamp
+				tex_address_mode border
 				tex_border_colour 1.0 1.0 1.0 1.0
 				filtering point point none
 			}

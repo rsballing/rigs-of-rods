@@ -231,6 +231,15 @@ class RendererSourceContracts(unittest.TestCase):
         self.assertIn("ImGui::GetContentRegionAvail().x", main_menu)
         self.assertIn("BUTTON_BG_COLOR       = ImVec4(0.30f", menu_header)
 
+    def test_graphics_preview_controls_are_on_startup_menu(self):
+        main_menu = load("source/main/gui/panels/GUI_GameMainMenu.cpp")
+        self.assertIn('m_num_buttons = 9;', main_menu)
+        self.assertIn('HighlightButton("Apply preview preset"', main_menu)
+        self.assertIn('HighlightButton("Restore stock preset"', main_menu)
+        self.assertIn("App::gfx_shadow_distance->setVal(700);", main_menu)
+        self.assertIn("App::gfx_shadow_distance->setVal(350);", main_menu)
+        self.assertIn('ImGui::TextDisabled("Graphics preview")', main_menu)
+
     def test_windows_release_contains_ui_resource_packs(self):
         validator = load("tools/windows/Test-RoRWindowsPackage.ps1")
         for pack in ("fonts", "mygui", "wallpapers", "icons"):

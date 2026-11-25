@@ -193,7 +193,11 @@ void ShadowManager::updateTerrainMaterial(Ogre::TerrainPSSMMaterialGenerator::SM
     {
         Ogre::PSSMShadowCameraSetup* pssmSetup = static_cast<Ogre::PSSMShadowCameraSetup*>(PSSM_Shadows.mPSSMSetup.get());
         matProfile->setReceiveDynamicShadowsDepth(true);
-        matProfile->setReceiveDynamicShadowsLowLod(false);
+        // In the graphics preview this can be enabled for the simplified
+        // (composite-map) terrain LOD as well. It remains opt-in because
+        // sampling three shadow maps on distant terrain is expensive.
+        matProfile->setReceiveDynamicShadowsLowLod(
+            App::gfx_terrain_low_lod_shadows->getBool());
         matProfile->setReceiveDynamicShadowsEnabled(true);
         matProfile->setReceiveDynamicShadowsPSSM(pssmSetup);
         matProfile->setLightmapEnabled(false);

@@ -427,6 +427,7 @@ void GameSettings::DrawGraphicsSettings()
         App::gfx_shadow_type->setVal(static_cast<int>(GfxShadowType::PSSM));
         App::gfx_shadow_quality->setVal(2); // 3x3 PCF; Ultra 5x5 is expensive.
         App::gfx_shadow_distance->setVal(700);
+        App::gfx_terrain_low_lod_shadows->setVal(true);
         App::gfx_reduce_shadows->setVal(false);
         if (App::gfx_sky_mode->getEnum<GfxSkyMode>() == GfxSkyMode::SKYX)
             App::gfx_natural_sunlight->setVal(true);
@@ -439,6 +440,7 @@ void GameSettings::DrawGraphicsSettings()
         App::gfx_shadow_type->setVal(static_cast<int>(GfxShadowType::PSSM));
         App::gfx_shadow_quality->setVal(2);
         App::gfx_shadow_distance->setVal(350);
+        App::gfx_terrain_low_lod_shadows->setVal(false);
         App::gfx_reduce_shadows->setVal(true);
         App::gfx_natural_sunlight->setVal(false);
     }
@@ -462,6 +464,11 @@ void GameSettings::DrawGraphicsSettings()
         {
             DrawGIntSlider(App::gfx_shadow_quality, _LC("GameSettings", "Shadow quality"), 0, 3);
             DrawGIntSlider(App::gfx_shadow_distance, "PSSM shadow distance (restart terrain)", 150, 1500);
+            DrawGCheckbox(App::gfx_terrain_low_lod_shadows,
+                "Experimental shadows on distant stock terrain (reload terrain)");
+            ImGui::TextWrapped(
+                "This option affects the low-detail terrain receiver, not "
+                "custom terrain materials or whether trees/buildings cast shadows.");
 
             // The stock PSSM generator is bypassed for custom terrain
             // materials. Explain the limitation instead of silently

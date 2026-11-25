@@ -147,6 +147,14 @@ jobs:
         continue-on-error: true
         run: |
           python ./tools/windows/Test-CgShaders.py ./redist
+      - name: Launch packaged RoR.exe without a game window (binary loader smoke test)
+        shell: pwsh
+        run: |
+          $exe = (Resolve-Path 'redist/RoR.exe').Path
+          $wd = (Resolve-Path 'redist').Path
+          $p = Start-Process -FilePath $exe -ArgumentList '--ci-load-check' -WorkingDirectory $wd -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw "Windows executable load check failed: exit code $($p.ExitCode)" }
+          Write-Host "PASS: Windows loader resolved all RoR.exe static imports"
       - name: Upload build to itch.io
         env:
           BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}

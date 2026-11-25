@@ -157,7 +157,11 @@ void shadow_receiver_ps(
 	// ambient term separately below so occluded faces are not pitch black.
 	// The old 0.3 + 0.7 * shadowing kept 30% direct sun in full shadow,
 	// washing out vehicle and terrain contrast.
-	float4 lighting = lit(dot(normal, lightVec), dot(normal, halfAngle), shininess * 52) * shadowing;
+	// Raster interpolation shortens vertex normals between triangles.
+	// Renormalize per pixel before diffuse/specular calculations; clamp the
+	// squared length so collapsed cab geometry cannot produce NaNs.
+	float3 surfaceNormal = normal * rsqrt(max(dot(normal, normal), 1e-8f));
+	float4 lighting = lit(dot(surfaceNormal, lightVec), dot(surfaceNormal, halfAngle), shininess * 52) * shadowing;
 
 
 	oColour = (diffuseColour * clamp(ambient + lightDiffuse * lighting.y, 0, 1)) + 	(lightSpecular * specularColour * lighting.z);

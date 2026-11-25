@@ -63,7 +63,9 @@ void GameMainMenu::DrawMenuPanel()
     if (App::app_state->getEnum<AppState>() == AppState::MAIN_MENU)
     {
         title = "Main menu";
-        m_num_buttons = 7;
+        // Include the two visible graphics-preview controls in keyboard
+        // navigation and window-size calculations.
+        m_num_buttons = 9;
         if (FileExists(PathCombine(App::sys_savegames_dir->getStr(), "autosave.sav")))
         {
             m_num_buttons++;
@@ -170,6 +172,31 @@ void GameMainMenu::DrawMenuPanel()
                 App::GetGuiManager()->GameSettings.SetVisible(true);
                 this->SetVisible(false);
             }
+
+            // Keep the graphics-preview controls discoverable at startup.
+            // The same presets are also available in Settings > Graphics.
+            // Main-menu-only application avoids modifying a running terrain.
+            ImGui::Separator();
+            ImGui::TextDisabled("Graphics preview");
+            if (HighlightButton("Apply preview preset", btn_size, button_index++))
+            {
+                App::gfx_shadow_type->setVal(static_cast<int>(GfxShadowType::PSSM));
+                App::gfx_shadow_quality->setVal(2);
+                App::gfx_shadow_distance->setVal(700);
+                App::gfx_reduce_shadows->setVal(false);
+                if (App::gfx_sky_mode->getEnum<GfxSkyMode>() == GfxSkyMode::SKYX)
+                    App::gfx_natural_sunlight->setVal(true);
+            }
+            if (HighlightButton("Restore stock preset", btn_size, button_index++))
+            {
+                App::gfx_shadow_type->setVal(static_cast<int>(GfxShadowType::PSSM));
+                App::gfx_shadow_quality->setVal(2);
+                App::gfx_shadow_distance->setVal(350);
+                App::gfx_reduce_shadows->setVal(true);
+                App::gfx_natural_sunlight->setVal(false);
+            }
+            ImGui::TextDisabled("Applied when you load a terrain.");
+            ImGui::Separator();
 
             if (HighlightButton(_LC("MainMenu", "Controls"), btn_size, button_index++))
             {

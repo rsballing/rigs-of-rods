@@ -77,6 +77,19 @@ class RendererSourceContracts(unittest.TestCase):
         self.assertIn("ShadowQualitySettings::TerrainPcfWidth(", generator)
         self.assertIn("SHADOW_SAMPLES NUM_SHADOW_SAMPLES_1D*NUM_SHADOW_SAMPLES_1D", generator)
 
+    def test_live_deformable_cab_normals_match_area_weighted_mesh_policy(self):
+        cpp = load("source/main/physics/flex/FlexObj.cpp")
+        section = cpp.split("Vector3 FlexObj::UpdateMesh()", 1)[1].split(
+            "Vector3 FlexObj::UpdateFlexObj()", 1
+        )[0]
+        self.assertIn("const Vector3 face_normal = edge1.crossProduct(edge2);", section)
+        self.assertIn("!std::isfinite(doubled_area)", section)
+        self.assertIn("doubled_area <= 1e-10f", section)
+        collapsed = section.split("if (doubled_area > m_s_ref[i])", 1)[1].split("}", 1)[0]
+        self.assertIn("continue;", collapsed)
+        self.assertIn("m_vertices[m_indices[i*3]].normal += face_normal;", section)
+        self.assertNotIn("v1=v1/s;", section)
+
     def test_vehicle_shadow_toggle_checks_optional_meshes(self):
         gfx_actor = load("source/main/gfx/GfxActor.cpp")
         self.assertIn("if (m_cab_entity != nullptr)", gfx_actor)

@@ -25,7 +25,12 @@ int main()
                 tasks.emplace_back([&completed]() { completed.fetch_add(1); });
 
             pool.Parallelize(tasks);
-            assert(completed.load() == count);
+            if (completed.load() != count)
+            {
+                std::cerr << "FAILED: " << count << " tasks expected, "
+                          << completed.load() << " completed\n";
+                return 1;
+            }
         }
     }
 
@@ -44,7 +49,12 @@ int main()
     std::thread first(caller), second(caller);
     first.join();
     second.join();
-    assert(concurrent_completed.load() == 2400);
+    if (concurrent_completed.load() != 2400)
+    {
+        std::cerr << "FAILED: concurrent task count = "
+                  << concurrent_completed.load() << ", expected 2400\n";
+        return 1;
+    }
 
     std::cout << "PASS: 2 kHz task scheduler retains strict barriers, "
                  "four-player and overflow batches, and concurrent callers\n";

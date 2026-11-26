@@ -49,7 +49,24 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          & cmake . -GNinja -DCMAKE_BUILD_TYPE=Release -Bbuild -DCMAKE_PROJECT_TOP_LEVEL_INCLUDES=cmake/conan_provider.cmake -DCMAKE_INSTALL_PREFIX=redist -DCREATE_CONTENT_FOLDER=ON *> ogre14-configure.log
+          # Use an absolute, quoted provider path. On Windows, the unquoted
+          # relative -D argument was split, leaving CMake looking for a
+          # non-existent module named "cmake/conan_provider" and a stray ".cmake".
+          $provider = (Resolve-Path 'cmake/conan_provider.cmake').Path
+          if (-not (Test-Path -LiteralPath $provider -PathType Leaf)) {
+            throw "Missing Conan CMake dependency provider: $provider"
+          }
+          $cmakeArgs = @(
+            '-S', '.',
+            '-B', 'build',
+            '-G', 'Ninja',
+            '-DCMAKE_BUILD_TYPE=Release',
+            "-DCMAKE_PROJECT_TOP_LEVEL_INCLUDES=$provider",
+            '-DCMAKE_INSTALL_PREFIX=redist',
+            '-DROR_CREATE_CONTENT_FOLDER=ON'
+          )
+          Write-Host "Using Conan CMake provider: $provider"
+          & cmake @cmakeArgs *> ogre14-configure.log
           $code = $LASTEXITCODE
           Get-Content ogre14-configure.log -Tail 160
           if ($code -ne 0) { throw "OGRE14 configure failed (exit $code)" }

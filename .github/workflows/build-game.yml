@@ -1,7 +1,7 @@
 ---
 name: Build game
 
-on: [ push, pull_request ]
+on: [ push, pull_request, workflow_dispatch ]
 
 # Obsolete graphics-preview commits should not consume Windows build capacity.
 # Other branches and pull requests retain their normal build behavior.

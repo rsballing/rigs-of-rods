@@ -224,6 +224,19 @@ void ShadowManager::setManagedMaterialSplitPoints(Ogre::PSSMShadowCameraSetup::S
     for (int i = 0; i < 4; ++i)
         splitPoints[i] = splitPointList[i];
 
-    GpuSharedParametersPtr p = GpuProgramManager::getSingleton().getSharedParameters("pssm_params");
-    p->setNamedConstant("pssmSplitPoints", splitPoints);
+    // OGRE14 stock terrain uses RTShaderSystem and does not require the
+    // legacy managed-material Cg parameter set. That set exists only if
+    // the optional managed shader scripts were loaded successfully.
+    // Do not crash before a map has loaded just because they are absent.
+    const auto& shared_sets =
+        GpuProgramManager::getSingleton().getAvailableSharedParameters();
+    const auto legacy_params = shared_sets.find("pssm_params");
+    if (legacy_params == shared_sets.end())
+    {
+        Ogre::LogManager::getSingleton().logMessage(
+            "[RoR|OGRE14] Legacy pssm_params unavailable; native RTSS terrain "
+            "shadows remain enabled, but custom managed Cg shadows may not work.");
+        return;
+    }
+    legacy_params->second->setNamedConstant("pssmSplitPoints", splitPoints);
 }

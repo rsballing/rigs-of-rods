@@ -13,5 +13,11 @@ target_include_directories(ror_threadpool_test PRIVATE
 find_package(Threads REQUIRED)
 target_link_libraries(ror_threadpool_test PRIVATE Threads::Threads)
 
+add_executable(ror_collision_overlap_test TestCollisionOverlapGroups.cpp)
+target_include_directories(ror_collision_overlap_test PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/../../../source/main/physics/collision"
+)
+
 enable_testing()
 add_test(NAME ror_threadpool_physics_hotpath COMMAND ror_threadpool_test)
+add_test(NAME ror_collision_overlap_components COMMAND ror_collision_overlap_test)

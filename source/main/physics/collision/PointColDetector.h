@@ -20,6 +20,7 @@
 #pragma once
 
 #include "Application.h"
+#include <unordered_set>
 
 namespace RoR {
 

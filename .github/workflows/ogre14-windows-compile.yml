@@ -72,6 +72,20 @@ jobs:
           ./tools/windows/Test-RoRWindowsPackage.ps1 -Directory './redist'
           ./tools/windows/Test-RendererPlugins.ps1 -DistributionDirectory './redist'
 
+      - name: Compile legacy managed-material Cg shader entry points
+        shell: pwsh
+        run: |
+          python ./tools/windows/Test-CgShaders.py ./redist
+          if ($LASTEXITCODE -ne 0) { throw "Legacy vehicle PSSM shaders cannot compile under OGRE14" }
+
+      - name: Confirm RoR.exe loads all its static DLL imports
+        shell: pwsh
+        run: |
+          $exe = (Resolve-Path 'redist/RoR.exe').Path
+          $wd = (Resolve-Path 'redist').Path
+          $process = Start-Process -FilePath $exe -ArgumentList '--ci-load-check' -WorkingDirectory $wd -Wait -PassThru
+          if ($process.ExitCode -ne 0) { throw "OGRE14 RoR.exe DLL load check failed: exit $($process.ExitCode)" }
+
       - name: Upload diagnostic logs even if compilation fails
         if: always()
         uses: actions/upload-artifact@v7

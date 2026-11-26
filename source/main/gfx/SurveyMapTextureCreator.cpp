@@ -69,11 +69,16 @@ bool SurveyMapTextureCreator::init(int res, int fsaa)
     mRttTex->setAutoUpdated(false);
 
     mCamera = App::GetGfxScene()->GetSceneManager()->createCamera("MapRttCam-" + TOSTRING(counter));
-    mCamera->setFixedYawAxis(false);
-    mCamera->setDirection(-Vector3::UNIT_Y);
     mCamera->setProjectionType(PT_ORTHOGRAPHIC);
     mCamera->setNearClipDistance(1.0f);
     mCamera->setFarClipDistance(0);
+
+    // OGRE14: camera pose belongs to its attached SceneNode, not Camera.
+    Ogre::SceneNode* camera_node =
+        App::GetGfxScene()->GetSceneManager()->getRootSceneNode()->createChildSceneNode();
+    camera_node->attachObject(mCamera);
+    camera_node->setFixedYawAxis(false);
+    camera_node->setDirection(-Vector3::UNIT_Y);
 
     auto mViewport = mRttTex->addViewport(mCamera);
     mViewport->setBackgroundColour(ColourValue::Black);
@@ -90,7 +95,7 @@ void SurveyMapTextureCreator::update(Vector2 center, Vector2 size)
         return;
  
     mCamera->setOrthoWindow(size.x, size.y);
-    mCamera->setPosition(Vector3(center.x, mTerrainHeight, center.y));
+    mCamera->getParentSceneNode()->setPosition(Vector3(center.x, mTerrainHeight, center.y));
 
     mRttTex->update();
 }
@@ -101,7 +106,7 @@ void SurveyMapTextureCreator::preRenderTargetUpdate(const RenderTargetEvent &evt
     if (water)
     {
         water->SetForcedCameraTransform(mCamera->getFOVy(),
-            mCamera->getPosition(), mCamera->getOrientation()); // FIXME: Legacy OGRE API! Use camera node instead!
+            mCamera->getParentSceneNode()->getPosition(), mCamera->getParentSceneNode()->getOrientation()); // FIXME: Legacy OGRE API! Use camera node instead!
         water->UpdateWater();
         water->ClearForcedCameraTransform();
     }

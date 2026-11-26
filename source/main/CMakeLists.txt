@@ -163,6 +163,7 @@ set(SOURCE_FILES
         physics/air/TurboProp.{h,cpp}
         physics/collision/CartesianToTriangleTransform.h
         physics/collision/Collisions.{h,cpp}
+        physics/collision/CollisionOverlapGroups.h
         physics/collision/DynamicCollisions.{h,cpp}
         physics/collision/PointColDetector.{h,cpp}
         physics/collision/Triangle.h

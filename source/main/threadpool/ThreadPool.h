@@ -21,6 +21,8 @@ along with Rigs of Rods.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "Application.h"
 
+#include <array>
+#include <algorithm>
 #include <atomic>
 #include <condition_variable>
 #include <functional>
@@ -197,17 +199,31 @@ public:
         // Launch all provided tasks (except for the first) in parallel and store the associated handles
         auto it = begin(task_funcs);
         const auto first_task = it++;
-        std::vector<std::shared_ptr<Task>> handles;
-        for(; it != end(task_funcs); ++it)
-        { 
-            handles.push_back(RunTask(*it));
+        // Inline task handles prevent per-substep vector allocations for
+        // typical scenes containing up to nine independently simulated actors.
+        // Larger scenes retain a dynamically sized overflow list.
+        std::array<std::shared_ptr<Task>, 8> inline_handles;
+        std::vector<std::shared_ptr<Task>> overflow_handles;
+        size_t handle_count = 0;
+        for (; it != end(task_funcs); ++it)
+        {
+            auto handle = RunTask(*it);
+            if (handle_count < inline_handles.size())
+                inline_handles[handle_count] = std::move(handle);
+            else
+                overflow_handles.emplace_back(std::move(handle));
+            ++handle_count;
         }
 
-        // Run the first task locally on the current thread
+        // Run first task on the calling thread, as before.
         (*first_task)();
 
-        // Synchronize, i.e. wait for all parallelized tasks to complete
-        for(const auto &h : handles) { h->join(); }
+        // Strict barrier: never advance to another 2 kHz physics phase
+        // until every worker task has completed.
+        for (size_t i = 0; i < std::min(handle_count, inline_handles.size()); ++i)
+            inline_handles[i]->join();
+        for (const auto& handle : overflow_handles)
+            handle->join();
     }
 
     std::atomic_bool m_terminate{false};            //!< Indicates destruction of ThreadPool instance to worker threads

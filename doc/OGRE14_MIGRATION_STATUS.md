@@ -212,9 +212,16 @@ OGRE14 rendering update.
 
 ### How to unblock the compilation verification
 
-From GitHub's **Actions** tab, select **OGRE 14 Windows game compilation**
-and run it on `ogre14-migration` (if Actions are enabled for this fork).
-If it fails, obtain the `ogre14-compile-diagnostics` artifact or the first
-compiler error. A passing compile still requires an in-game GPU run with
-terrain, shadows, mirrors, water, vehicle deformation and mod resources.
+GitHub's **Actions** tab should show a **Build game** pull-request or
+branch run for `ogre14-migration` when Actions are enabled on the fork.
+The new **OGRE 14 Windows game compilation** workflow can also run on a
+push to `ogre14-migration`. Note that GitHub normally requires a
+`workflow_dispatch` file to exist on the default branch before offering
+its manual **Run workflow** button; this branch-only workflow may therefore
+not offer a manual button yet. If no runs appear, first check whether
+Actions are enabled for the fork.
+
+If a run fails, retrieve its `ogre14-compile-diagnostics` artifact or
+first compiler error. A passing compile still requires an in-game GPU run
+with terrain, shadows, mirrors, water, vehicle deformation and mod resources.
 

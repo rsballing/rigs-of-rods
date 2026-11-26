@@ -70,6 +70,9 @@ private:
 
     ActorPtr                 m_actor;
     std::vector<ActorInstanceID_t>    m_collision_partners; //!< IntraPoint: always just owning actor; InterPoint: all colliding actors
+    // Scratch partner list reused at 2 kHz. This detector belongs to one
+    // actor and is updated by one collision task at a time.
+    std::vector<ActorInstanceID_t>    m_collision_partner_scratch;
     std::vector<refelem_t> m_ref_list;
     
     std::vector<kdnode_t>  m_kdtree;

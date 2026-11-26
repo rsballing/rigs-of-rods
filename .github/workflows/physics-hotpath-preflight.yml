@@ -1,0 +1,32 @@
+name: Physics 2 kHz scheduler preflight
+
+on:
+  push:
+    branches: [physics-quality-upgrade]
+  pull_request:
+    paths:
+      - 'source/main/threadpool/ThreadPool.h'
+      - 'source/main/physics/ActorManager.cpp'
+      - 'source/main/physics/collision/PointColDetector.*'
+      - 'tools/tests/physics-hotpath/**'
+      - '.github/workflows/physics-hotpath-preflight.yml'
+  workflow_dispatch:
+
+jobs:
+  threadpool-regression:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure native task scheduler test
+        run: cmake -S tools/tests/physics-hotpath -B build/physics-hotpath -DCMAKE_BUILD_TYPE=Release
+      - name: Build test
+        run: cmake --build build/physics-hotpath --config Release
+      - name: Check task completion and concurrent callers
+        run: ctest --test-dir build/physics-hotpath -C Release --output-on-failure
+
+# Standalone test does not establish stable in-game physics, frame times,
+# collisions, tires, render performance, or complete Windows game build.

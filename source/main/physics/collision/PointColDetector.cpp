@@ -51,13 +51,15 @@ void PointColDetector::UpdateIntraPoint(bool contactables)
 void PointColDetector::UpdateInterPoint(bool ignorestate)
 {
     int contacters_size = 0;
-    std::vector<ActorInstanceID_t> collision_partners;
+    // Reuse the allocation instead of rebuilding a temporary vector for
+    // every vehicle at every 0.5 ms physics substep.
+    m_collision_partner_scratch.clear();
     for (ActorPtr& actor : App::GetGameContext()->GetActorManager()->GetActors())
     {
         if (actor != m_actor && (ignorestate || actor->ar_update_physics) &&
                 m_actor->ar_bounding_box.intersects(actor->ar_bounding_box))
         {
-            collision_partners.push_back(actor->ar_instance_id);
+            m_collision_partner_scratch.push_back(actor->ar_instance_id);
             bool is_linked = std::find(m_actor->ar_linked_actors.begin(), m_actor->ar_linked_actors.end(), actor) != m_actor->ar_linked_actors.end();
             contacters_size += is_linked ? actor->ar_num_contacters : actor->ar_num_contactable_nodes;
             if (m_actor->ar_nodes[0].Velocity.squaredDistance(actor->ar_nodes[0].Velocity) > 16)
@@ -78,9 +80,12 @@ void PointColDetector::UpdateInterPoint(bool ignorestate)
 
     m_actor->ar_collision_relevant = (contacters_size > 0);
 
-    if (collision_partners != m_collision_partners || contacters_size != m_object_list_size)
+    if (m_collision_partner_scratch != m_collision_partners ||
+        contacters_size != m_object_list_size)
     {
-        m_collision_partners = collision_partners;
+        // Swap backing stores to retain capacity without copying the list.
+        // The previous partner list becomes next substep's scratch storage.
+        m_collision_partners.swap(m_collision_partner_scratch);
         m_object_list_size = contacters_size;
         update_structures_for_contacters(false);
     }

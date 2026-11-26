@@ -35,6 +35,7 @@
 #include "Collisions.h"
 #include "DashBoardManager.h"
 #include "DynamicCollisions.h"
+#include "CollisionOverlapGroups.h"
 #include "Engine.h"
 #include "GameContext.h"
 #include "GfxScene.h"
@@ -1251,10 +1252,27 @@ void ActorManager::UpdatePhysicsSimulation()
     {
         actor->UpdatePhysicsOrigin();
     }
+
+    // Both batches run 2,000 times per simulated second. Keep their backing
+    // storage for the duration of this simulation update instead of repeatedly
+    // reallocating it at every 0.5 ms substep. Parallelize() waits for all
+    // workers, so reusing the storage here is safe.
+    std::vector<std::function<void()>> force_tasks;
+    std::vector<std::function<void()>> collision_tasks;
+    std::vector<std::size_t> collision_job_actor_indexes;
+    std::vector<std::size_t> collision_group_roots;
+    std::vector<std::function<void()>> collision_group_tasks;
+    CollisionOverlapGroups collision_overlap_groups;
+    force_tasks.reserve(m_actors.size());
+    collision_tasks.reserve(m_actors.size());
+    collision_job_actor_indexes.reserve(m_actors.size());
+    collision_group_roots.reserve(m_actors.size());
+    collision_group_tasks.reserve(m_actors.size());
+
     for (int i = 0; i < m_physics_steps; i++)
     {
         {
-            std::vector<std::function<void()>> tasks;
+            force_tasks.clear();
             for (ActorPtr& actor: m_actors)
             {
                 if (actor->ar_update_physics = actor->CalcForcesEulerPrepare(i == 0))
@@ -1263,10 +1281,10 @@ void ActorManager::UpdatePhysicsSimulation()
                         {
                             actor->CalcForcesEulerCompute(i == 0, m_physics_steps);
                         });
-                    tasks.push_back(func);
+                    force_tasks.push_back(std::move(func));
                 }
             }
-            App::GetThreadPool()->Parallelize(tasks);
+            App::GetThreadPool()->Parallelize(force_tasks);
             for (ActorPtr& actor: m_actors)
             {
                 if (actor->ar_update_physics)
@@ -1276,9 +1294,11 @@ void ActorManager::UpdatePhysicsSimulation()
             }
         }
         {
-            std::vector<std::function<void()>> tasks;
-            for (ActorPtr& actor: m_actors)
+            collision_tasks.clear();
+            collision_job_actor_indexes.clear();
+            for (std::size_t actor_index = 0; actor_index < m_actors.size(); ++actor_index)
             {
+                ActorPtr& actor = m_actors[actor_index];
                 if (actor->m_inter_point_col_detector != nullptr && (actor->ar_update_physics ||
                         (App::mp_pseudo_collisions->getBool() && actor->ar_state == ActorState::NETWORKED_OK)))
                 {
@@ -1298,10 +1318,63 @@ void ActorManager::UpdatePhysicsSimulation()
                                    *actor->ar_submesh_ground_model);
                             }
                         });
-                    tasks.push_back(func);
+                    collision_tasks.push_back(std::move(func));
+                    collision_job_actor_indexes.push_back(actor_index);
                 }
             }
-            App::GetThreadPool()->Parallelize(tasks);
+            if (collision_tasks.size() < 2)
+            {
+                App::GetThreadPool()->Parallelize(collision_tasks);
+            }
+            else
+            {
+                // Two overlapping collision jobs may modify the same node
+                // Forces/contacts simultaneously. Group ALL actor AABBs,
+                // including actors without their own collision job, because
+                // they can still receive forces from two other actors.
+                // Disjoint components remain eligible for multicore work.
+                const bool overlapping = collision_overlap_groups.Rebuild(
+                    m_actors.size(), [this](std::size_t a, std::size_t b)
+                    {
+                        return m_actors[a]->ar_bounding_box.intersects(
+                            m_actors[b]->ar_bounding_box);
+                    });
+                if (!overlapping)
+                {
+                    App::GetThreadPool()->Parallelize(collision_tasks);
+                }
+                else
+                {
+                    collision_group_roots.clear();
+                    collision_group_tasks.clear();
+                    for (std::size_t job = 0; job < collision_tasks.size(); ++job)
+                    {
+                        const std::size_t root =
+                            collision_overlap_groups.Root(collision_job_actor_indexes[job]);
+                        if (std::find(collision_group_roots.begin(),
+                                      collision_group_roots.end(), root) != collision_group_roots.end())
+                            continue;
+
+                        collision_group_roots.push_back(root);
+                        collision_group_tasks.emplace_back(
+                            [root, &collision_overlap_groups, &collision_tasks,
+                             &collision_job_actor_indexes]()
+                            {
+                                // Deterministic actor order inside a collision
+                                // component; no concurrent writes into its nodes.
+                                for (std::size_t j = 0; j < collision_tasks.size(); ++j)
+                                {
+                                    if (collision_overlap_groups.Root(
+                                            collision_job_actor_indexes[j]) == root)
+                                        collision_tasks[j]();
+                                }
+                            });
+                    }
+                    // This call joins all worker tasks before any forces are
+                    // integrated in the next 0.5 ms physics substep.
+                    App::GetThreadPool()->Parallelize(collision_group_tasks);
+                }
+            }
         }
 
         // Apply FreeForces - intentionally as a separate pass over all actors

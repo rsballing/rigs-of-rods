@@ -142,6 +142,44 @@ class Ogre14MigrationContract(unittest.TestCase):
         ):
             self.assertTrue((ROOT / resource).is_file(), resource)
 
+    def test_remaining_ogre14_ui_and_particle_api_ports(self):
+        gui = source("source/main/gui/RTTLayer.cpp")
+        imgui = source("source/main/gui/imgui/OgreImGuiOverlay.cpp")
+        imgui_header = source("source/main/gui/imgui/OgreImGuiOverlay.h")
+        input_source = source("source/main/utils/InputEngine.cpp")
+        spawner = source("source/main/physics/ActorSpawner.cpp")
+        self.assertIn('std::string(propert->findAttribute("key"))', gui)
+        self.assertIn('std::string(propert->findAttribute("value"))', gui)
+        self.assertNotIn("mConvertToBGR", imgui)
+        self.assertNotIn("mConvertToBGR", imgui_header)
+        self.assertIn("rw->getMetrics(width, height, left, top);", input_source)
+        self.assertNotIn("rw->getMetrics(width, height, depth, left, top)", input_source)
+        self.assertIn("Ogre::MOT_PARTICLE_SYSTEM", spawner)
+
+    def test_minimap_scene_node_and_legacy_resource_group_compatibility(self):
+        survey = source("source/main/gfx/SurveyMapTextureCreator.cpp")
+        resources = source("source/main/resources/ContentManager.cpp")
+        menus = source("source/main/gui/GUIManager.cpp")
+        icons = source("source/main/gui/GUIUtils.cpp")
+        self.assertIn("camera_node->attachObject(mCamera)", survey)
+        self.assertIn("mCamera->getParentSceneNode()->setPosition", survey)
+        self.assertNotIn("mCamera->setFixedYawAxis(", survey)
+        self.assertIn('DECLARE_RESOURCE_PACK( WALLPAPERS,', resources)
+        self.assertIn('"Wallpapers"', menus)
+        self.assertIn('"FlagsRG"', icons)
+        self.assertNotIn("RGN_WALLPAPERS", menus)
+        self.assertNotIn("RGN_UI_ICONS", icons)
+
+    def test_windows_game_build_is_gated(self):
+        build = source(".github/workflows/ogre14-windows-compile.yml")
+        self.assertIn("cmake --build build --target install", build)
+        self.assertIn("Test-RoRWindowsPackage.ps1", build)
+        self.assertIn("Test-RendererPlugins.ps1", build)
+        self.assertIn("Test-CgShaders.py", build)
+        self.assertIn("--ci-load-check", build)
+        self.assertIn("if: always()", build)
+        self.assertIn("https://conan.cloudsmith.io/rigs-of-rods/deps/", build)
+
     def test_preserve_existing_graphics_controls_and_shadow_code(self):
         ui = source("source/main/gui/panels/GUI_GameSettings.cpp")
         menu = source("source/main/gui/panels/GUI_GameMainMenu.cpp")

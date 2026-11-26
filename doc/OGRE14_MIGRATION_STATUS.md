@@ -174,7 +174,7 @@ behavior; compare directional sun shadows against the 1.11 baseline; then
 run the crash/UV seam and mod compatibility matrix. Only after those
 checks should improved lighting be introduced on top of the renderer.
 
-## November 26, 2026 — Windows build gate and additional API ports
+## November 25, 2026 — Windows build gate and additional API ports
 
 The experimental branch now additionally:
 
@@ -224,4 +224,29 @@ Actions are enabled for the fork.
 If a run fails, retrieve its `ogre14-compile-diagnostics` artifact or
 first compiler error. A passing compile still requires an in-game GPU run
 with terrain, shadows, mirrors, water, vehicle deformation and mod resources.
+
+
+## Latest compatibility pass — November 25, 2026
+
+Additional code fixes committed during this pass:
+
+- Follow OGRE14's SkyX cloud render queue changes, including
+  `RENDER_QUEUE_8` in place of the deprecated `RENDER_QUEUE_9`.
+- Use the current Hydrax camera's projection matrix and scene-node-derived
+  position when calculating water reflections and sun-light directions.
+- Give the main camera a finite far plane to avoid infinite-projection
+  artifacts in Hydrax and SkyX.
+- Avoid a startup-time exception when the optional legacy `pssm_params`
+  Cg shader parameter set is missing; OGRE14 RTShaderSystem terrain
+  shadows can remain available. Report the possible managed-material
+  limitation in the OGRE log.
+- Keep the corresponding source-level preflight assertions in
+  `tools/CI/Test-Ogre14-Migration.py`.
+
+**Not completed:** a full OGRE14 Windows executable build has still not
+returned successful CI results. No direct Windows build or GPU validation
+is available through the current connected environment, and this project
+cannot be cloned into the execution container due to disabled outgoing
+DNS/network access. This branch is **not released or merged**; do not
+overwrite an OGRE 1.11 installation with it.
 

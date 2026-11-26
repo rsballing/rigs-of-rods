@@ -1251,10 +1251,20 @@ void ActorManager::UpdatePhysicsSimulation()
     {
         actor->UpdatePhysicsOrigin();
     }
+
+    // Both batches run 2,000 times per simulated second. Keep their backing
+    // storage for the duration of this simulation update instead of repeatedly
+    // reallocating it at every 0.5 ms substep. Parallelize() waits for all
+    // workers, so reusing the storage here is safe.
+    std::vector<std::function<void()>> force_tasks;
+    std::vector<std::function<void()>> collision_tasks;
+    force_tasks.reserve(m_actors.size());
+    collision_tasks.reserve(m_actors.size());
+
     for (int i = 0; i < m_physics_steps; i++)
     {
         {
-            std::vector<std::function<void()>> tasks;
+            force_tasks.clear();
             for (ActorPtr& actor: m_actors)
             {
                 if (actor->ar_update_physics = actor->CalcForcesEulerPrepare(i == 0))
@@ -1263,10 +1273,10 @@ void ActorManager::UpdatePhysicsSimulation()
                         {
                             actor->CalcForcesEulerCompute(i == 0, m_physics_steps);
                         });
-                    tasks.push_back(func);
+                    force_tasks.push_back(std::move(func));
                 }
             }
-            App::GetThreadPool()->Parallelize(tasks);
+            App::GetThreadPool()->Parallelize(force_tasks);
             for (ActorPtr& actor: m_actors)
             {
                 if (actor->ar_update_physics)
@@ -1276,7 +1286,7 @@ void ActorManager::UpdatePhysicsSimulation()
             }
         }
         {
-            std::vector<std::function<void()>> tasks;
+            collision_tasks.clear();
             for (ActorPtr& actor: m_actors)
             {
                 if (actor->m_inter_point_col_detector != nullptr && (actor->ar_update_physics ||
@@ -1298,10 +1308,10 @@ void ActorManager::UpdatePhysicsSimulation()
                                    *actor->ar_submesh_ground_model);
                             }
                         });
-                    tasks.push_back(func);
+                    collision_tasks.push_back(std::move(func));
                 }
             }
-            App::GetThreadPool()->Parallelize(tasks);
+            App::GetThreadPool()->Parallelize(collision_tasks);
         }
 
         // Apply FreeForces - intentionally as a separate pass over all actors

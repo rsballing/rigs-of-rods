@@ -173,3 +173,48 @@ new Caelum/MyGUI/OGRE dependency graph; test Cg shader and PSSM runtime
 behavior; compare directional sun shadows against the 1.11 baseline; then
 run the crash/UV seam and mod compatibility matrix. Only after those
 checks should improved lighting be introduced on top of the renderer.
+
+## November 26, 2026 — Windows build gate and additional API ports
+
+The experimental branch now additionally:
+
+- Points Conan to the published Rigs of Rods Cloudsmith repository:
+  `https://conan.cloudsmith.io/rigs-of-rods/deps/`.
+- Contains a **separate full-game Windows build workflow** at
+  `.github/workflows/ogre14-windows-compile.yml`, which attempts to
+  configure, compile and install `RoR.exe`, verify enabled renderer plugins,
+  compile legacy Cg shader entry points, and run the executable's loader
+  smoke test. On failure, configure/compile diagnostics are uploaded as
+  artifacts; the Windows game artifact is published only after these gates.
+- Updates `RenderWindow::getMetrics` use, particle-system creation,
+  survey-map camera positioning, MyGUI RTT deserialization, ImGui vertex
+  colour conversion, and renderer-related flex/audio header imports.
+- Retains the fork's original `Wallpapers` and `FlagsRG` resource groups
+  rather than importing upstream renames incompatible with this branch.
+- Extends the source preflight checks for the added API ports and the
+  full Windows build's release gates.
+
+**Actual test status:** source strings and file references were checked,
+but the GitHub connector returned **zero workflow runs and zero reported
+status checks** for the current commit at the time of this update. The
+container cannot fetch this repository or run a Windows graphics build.
+Therefore **this migration still has no verified compiled `RoR.exe` and
+must not be merged or distributed as a finished OGRE14 update.**
+
+OGRE 14.5 supports an optional Cg plugin, but its presence in the chosen
+Conan build and compatibility with RoR's managed materials is not yet
+verified. The dedicated Windows workflow treats shader compilation as a
+gate; stock terrain PSSM receiving uses OGRE14's RTShaderSystem.
+
+The parallel `physics-quality-upgrade` branch is intentionally separate:
+its unverified multi-vehicle scheduler changes are **not** part of the
+OGRE14 rendering update.
+
+### How to unblock the compilation verification
+
+From GitHub's **Actions** tab, select **OGRE 14 Windows game compilation**
+and run it on `ogre14-migration` (if Actions are enabled for this fork).
+If it fails, obtain the `ogre14-compile-diagnostics` artifact or the first
+compiler error. A passing compile still requires an in-game GPU run with
+terrain, shadows, mirrors, water, vehicle deformation and mod resources.
+

@@ -180,6 +180,24 @@ class Ogre14MigrationContract(unittest.TestCase):
         self.assertIn("if: always()", build)
         self.assertIn("https://conan.cloudsmith.io/rigs-of-rods/deps/", build)
 
+    def test_ogre14_skyx_hydrax_and_camera_projection(self):
+        sky = source("source/main/gfx/skyx/VClouds/VClouds.cpp")
+        hydrax_rtt = source("source/main/gfx/hydrax/RttManager.cpp")
+        hydrax_mat = source("source/main/gfx/hydrax/MaterialManager.cpp")
+        camera = source("source/main/gfx/camera/CameraManager.cpp")
+        self.assertIn("Ogre::RENDER_QUEUE_8", sky)
+        self.assertNotIn("Ogre::RENDER_QUEUE_9", sky)
+        self.assertNotIn("getProjectionMatrixRS()", hydrax_rtt)
+        self.assertIn("getCamera()->getParentSceneNode()->getPosition()", hydrax_mat)
+        self.assertIn("setFarClipDistance(100000.0f)", camera)
+
+    def test_missing_optional_cg_shadow_parameters_are_safe(self):
+        shadows = source("source/main/gfx/ShadowManager.cpp")
+        self.assertIn("getAvailableSharedParameters()", shadows)
+        self.assertIn('shared_sets.find("pssm_params")', shadows)
+        self.assertIn("if (legacy_params == shared_sets.end())", shadows)
+        self.assertIn("legacy_params->second->setNamedConstant", shadows)
+
     def test_preserve_existing_graphics_controls_and_shadow_code(self):
         ui = source("source/main/gui/panels/GUI_GameSettings.cpp")
         menu = source("source/main/gui/panels/GUI_GameMainMenu.cpp")

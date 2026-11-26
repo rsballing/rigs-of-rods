@@ -15,7 +15,7 @@ jobs:
     runs-on: windows-2025
     timeout-minutes: 120
     env:
-      BUILD_TOOLS_PATH: C:\\apps\\build-tools\\
+      BUILD_TOOLS_PATH: C:\apps\build-tools\
       CONAN_USER_HOME_SHORT: None
     steps:
       - name: Add Rigs of Rods build tools to PATH

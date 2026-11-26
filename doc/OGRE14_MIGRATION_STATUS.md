@@ -68,7 +68,7 @@ independent of OGRE and must continue passing.
 To attempt a local game build with the project's Conan provider:
 
 ```powershell
-conan remote add rigs-of-rods-deps https://nexus.anotherfoxguy.com/repository/rigs-of-rods/ -f
+conan remote add rigs-of-rods-deps https://conan.cloudsmith.io/rigs-of-rods/deps/ -f
 cmake . -GNinja -DCMAKE_BUILD_TYPE=Release -Bbuild -DCMAKE_PROJECT_TOP_LEVEL_INCLUDES=cmake/conan_provider.cmake -DCMAKE_INSTALL_PREFIX=redist -DCREATE_CONTENT_FOLDER=ON
 cmake --build build --target install
 ```

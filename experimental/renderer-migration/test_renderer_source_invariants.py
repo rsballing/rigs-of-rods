@@ -92,7 +92,9 @@ class RendererSourceContracts(unittest.TestCase):
         self.assertNotIn("param_named pssmSplitPoints float4 1.0 187 774 10000.0", general)
         self.assertNotIn("param_named pssmSplitPoints float4 1.0 187 774 10000.0", grass)
         self.assertIn("shared_param_named pssmSplitPoints float4", shared)
-        self.assertIn('getSharedParameters("pssm_params")', manager)
+        self.assertIn('getAvailableSharedParameters()', manager)
+        self.assertIn('shared_sets.find("pssm_params")', manager)
+        self.assertIn('if (legacy_params == shared_sets.end())', manager)
         self.assertIn('setNamedConstant("pssmSplitPoints", splitPoints)', manager)
         # Material scripts parse in non-PSSM mode as well: the shared
         # parameter definition must still be registered before they load.
@@ -236,10 +238,12 @@ class RendererSourceContracts(unittest.TestCase):
         validation = load("tools/windows/Test-RoRWindowsPackage.ps1")
         self.assertIn("Validate Windows renderer and shader distribution", workflow)
         self.assertIn("./tools/windows/Test-RoRWindowsPackage.ps1", workflow)
-        self.assertIn("'RenderSystem_Direct3D9.dll'", validation)
-        self.assertIn("'RenderSystem_Direct3D11.dll'", validation)
-        self.assertIn("'RenderSystem_GL.dll'", validation)
-        self.assertIn("'resources/managed_materials/shadows/pssm/on/pssm.cg'", validation)
+        # OGRE14 packages may ship any configured subset of renderers.
+        # Validate the plugin configuration rather than requiring D3D9/GL.
+        self.assertIn('$enabledPlugins', validation)
+        self.assertIn('RenderSystem_*', validation)
+        self.assertIn('Assert-X64PortableExecutable $file', validation)
+        self.assertIn("Assert-ResourceEntry 'managed_materials' 'shadows/pssm/on/pssm.cg'", validation)
         self.assertLess(
             workflow.index("Validate Windows renderer and shader distribution"),
             workflow.index("      - name: Upload redist folder", workflow.index("  build-msvc:")),
@@ -286,7 +290,9 @@ class RendererSourceContracts(unittest.TestCase):
         validator = load("tools/windows/Test-RoRWindowsPackage.ps1")
         for pack in ("fonts", "mygui", "wallpapers", "icons"):
             self.assertIn(f"'"+pack+"'", validator)
-        self.assertIn("Incomplete Windows UI assets:", validator)
+        # Both zip and unpacked resource packs are supported by OGRE14.
+        self.assertIn("Incomplete Windows package: missing resource pack", validator)
+        self.assertIn("Assert-ResourcePack $pack", validator)
 
 
 if __name__ == "__main__":

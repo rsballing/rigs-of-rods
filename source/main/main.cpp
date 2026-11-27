@@ -27,6 +27,7 @@
 #include "ChatSystem.h"
 #include "Collisions.h"
 #include "Console.h"
+#include "SimConstants.h"
 #include "ContentManager.h"
 #include "DashBoardManager.h"
 #include "DiscordRpc.h"
@@ -124,6 +125,10 @@ int main(int argc, char *argv[])
 
         // Load RoR.cfg - updates cvars
         App::GetConsole()->loadConfig();
+        CVar* physics_hz = App::GetConsole()->cVarFind("sim_physics_hz");
+        const int startup_hz = RoR::ClampPhysicsFrequency(physics_hz->getInt());
+        physics_hz->setVal(startup_hz);
+        RoR::physics_timestep = 1.0f / startup_hz;
 
         // Process command line params - updates 'cli_*' cvars
         App::GetConsole()->processCommandLine(argc, argv);

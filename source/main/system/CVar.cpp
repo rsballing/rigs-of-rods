@@ -44,6 +44,7 @@ void Console::cVarSetupBuiltins()
     App::app_custom_scripts      = this->cVarCreate("app_custom_scripts",      "",                           CVAR_ARCHIVE,                     "");
     App::app_recent_scripts      = this->cVarCreate("app_recent_scripts",      "",                           CVAR_ARCHIVE,                     "");
 
+    this->cVarCreate("sim_physics_hz", "Physics calculation rate", CVAR_ARCHIVE | CVAR_TYPE_INT, "2000");
     App::sim_state               = this->cVarCreate("sim_state",               "",                                          CVAR_TYPE_INT,     "0"/*(int)SimState::OFF*/);
     App::sim_terrain_name        = this->cVarCreate("sim_terrain_name",        "",                           0);
     App::sim_terrain_gui_name    = this->cVarCreate("sim_terrain_gui_name",    "",                           0);

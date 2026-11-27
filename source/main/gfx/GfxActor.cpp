@@ -20,6 +20,7 @@
 */
 
 #include "GfxActor.h"
+#include "SimConstants.h"
 
 #include "ApproxMath.h"
 #include "AirBrake.h"
@@ -3021,7 +3022,7 @@ void RoR::GfxActor::UpdatePropAnimations(float dt)
                 float limiter = 0.0f;
                 // This code was formerly executed within a fixed timestep of 0.5ms and finetuned accordingly.
                 // This is now taken into account by factoring in the respective fraction of the variable timestep.
-                float const dt_frac = dt * 2000.f;
+                float const dt_frac = dt / PHYSICS_DT;
                 if (anim.animMode & PROP_ANIM_MODE_AUTOANIMATE)
                 {
                     if (anim.animMode & PROP_ANIM_MODE_ROTA_X)
@@ -3110,7 +3111,7 @@ void RoR::GfxActor::UpdatePropAnimations(float dt)
                 {
                     // This code was formerly executed within a fixed timestep of 0.5ms and finetuned accordingly.
                     // This is now taken into account by factoring in the respective fraction of the variable timestep.
-                    float const dt_frac = dt * 2000.f;
+                    float const dt_frac = dt / PHYSICS_DT;
                     autooffset = offset + cstate * dt_frac;
 
                     if (autooffset > anim.upper_limit)

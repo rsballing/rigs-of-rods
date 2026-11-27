@@ -81,10 +81,20 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          & cmake --build build --target install --parallel 2 *> ogre14-build.log
+          # Keep compiling independent targets after the first error so one
+          # long Windows run reveals several migration problems, not just one.
+          # -k 25 is a Ninja-specific bounded keep-going limit.
+          & cmake --build build --target install --parallel 2 -- -k 25 *> ogre14-build.log
           $code = $LASTEXITCODE
           Get-Content ogre14-build.log -Tail 180
-          if ($code -ne 0) { throw "OGRE14 compilation failed (exit $code)" }
+          if ($code -ne 0) {
+            $errors = Select-String -Path 'ogre14-build.log' -Pattern 'fatal error|error C[0-9]{4}|error LNK[0-9]{4}|: error:|FAILED:|undefined reference|ninja: build stopped'
+            if ($errors) {
+              Write-Host '=== First compiler/linker diagnostics (see artifact for full log) ==='
+              $errors | Select-Object -First 90 | ForEach-Object { Write-Host $_.Line }
+            }
+            throw "OGRE14 compilation failed (exit $code)"
+          }
 
       - name: Verify built game and modern shader assets
         shell: pwsh

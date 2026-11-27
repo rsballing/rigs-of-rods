@@ -349,6 +349,9 @@ endif ()
 ####################################################################################################
 set(BINNAME "RoR")
 add_executable(${BINNAME} ${SOURCE_FILES})
+# Fail configuration on compilers that cannot provide the standard required
+# by OGRE 14 and MyGUI 3.4.3, before a long dependency-heavy build runs.
+target_compile_features(${BINNAME} PRIVATE cxx_std_17)
 
 if (WIN32)
     set_target_properties(${BINNAME} PROPERTIES WIN32_EXECUTABLE YES)

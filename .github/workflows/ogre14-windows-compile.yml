@@ -53,6 +53,13 @@ jobs:
           conan export cmake/conan-recipes/mygui --user=anotherfoxguy --channel=stable
           if ($LASTEXITCODE -ne 0) { throw "MyGUI Conan recipe export failed" }
 
+      # Caelum 2022.08 uses std::bind1st/std::mem_fun, removed in C++17.
+      # MSVC's compatibility macro restores those interfaces in dependency builds.
+      - name: Enable legacy STL compatibility for Caelum
+        shell: pwsh
+        run: |
+          "CL=/D_HAS_AUTO_PTR_ETC=1" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
       - name: Configure Windows OGRE 14 game
         shell: pwsh
         run: |

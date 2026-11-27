@@ -1,5 +1,4 @@
 #include "OgreShaderParticleRenderer.h"
-#include "OgreParticleCustomParam.h"
 
 #include <OgreParticle.h>
 #include <OgreStringConverter.h>
@@ -129,7 +128,7 @@ const String& ShaderParticleRenderer::getType(void) const
 }
 
 //////////////////////////////////////////////////////////////////////////
-void ShaderParticleRenderer::_updateRenderQueue(RenderQueue* queue, Ogre::list<Particle*>::type& currentParticles, bool cullIndividually)
+void ShaderParticleRenderer::_updateRenderQueue(RenderQueue* queue, std::vector<Particle*>& currentParticles, bool cullIndividually)
 {
     // be sure that we have enough space in buffers
     if (!allocateBuffers(currentParticles.size())) {
@@ -142,7 +141,7 @@ void ShaderParticleRenderer::_updateRenderQueue(RenderQueue* queue, Ogre::list<P
     if (!currentParticles.empty()) {
         HardwareVertexBufferSharedPtr pVB = mVertexData->vertexBufferBinding->getBuffer(0);
         uchar* pDataVB  = reinterpret_cast<uchar*>(pVB->lock(HardwareBuffer::HBL_DISCARD));
-        for (Ogre::list<Particle*>::type::iterator it=currentParticles.begin(); it!=currentParticles.end(); ++it) {
+        for (std::vector<Particle*>::iterator it=currentParticles.begin(); it!=currentParticles.end(); ++it) {
             Particle* pParticle = *it;
             addParticle(pDataVB, *pParticle);
             pDataVB += 4 * mVertexSize;
@@ -180,16 +179,8 @@ void ShaderParticleRenderer::_notifyCurrentCamera(Camera* cam)
 }
 
 //////////////////////////////////////////////////////////////////////////
-void ShaderParticleRenderer::_notifyParticleRotated(void)
-{
-    // nothing to do
-}
 
 //////////////////////////////////////////////////////////////////////////
-void ShaderParticleRenderer::_notifyParticleResized(void)
-{
-    // nothing to do
-}
 
 //////////////////////////////////////////////////////////////////////////
 void ShaderParticleRenderer::_notifyParticleQuota(size_t quota)
@@ -212,16 +203,8 @@ void ShaderParticleRenderer::_notifyDefaultDimensions(Real width, Real height)
 }
 
 //////////////////////////////////////////////////////////////////////////
-ParticleVisualData* ShaderParticleRenderer::_createVisualData(void)
-{
-    return OGRE_NEW ParticleCustomParam();
-}
 
 //////////////////////////////////////////////////////////////////////////
-void ShaderParticleRenderer::_destroyVisualData(ParticleVisualData* vis)
-{
-    OGRE_DELETE vis;
-}
 
 //////////////////////////////////////////////////////////////////////////
 void ShaderParticleRenderer::setRenderQueueGroup(uint8 queueID)
@@ -445,12 +428,13 @@ void ShaderParticleRenderer::addParticle(uint8* pDataVB, const Particle& particl
 
     // diffuse colour
     if (mVertexFormatColour) {
+        const ColourValue colour(reinterpret_cast<const uchar*>(&particle.mColour));
         for (int k=0; k<4; ++k) {
             float* pColour = reinterpret_cast<float*>(pDataVB + k*mVertexSize + ofs);
-            pColour[0] = particle.mColour.r;
-            pColour[1] = particle.mColour.g;
-            pColour[2] = particle.mColour.b;
-            pColour[3] = particle.mColour.a;
+            pColour[0] = colour.r;
+            pColour[1] = colour.g;
+            pColour[2] = colour.b;
+            pColour[3] = colour.a;
         }
         ofs += sizeof(float) * 4;
     }
@@ -550,8 +534,9 @@ void ShaderParticleRenderer::addParticle(uint8* pDataVB, const Particle& particl
     }
 
     // custom parameter
-    ParticleCustomParam* pCustom = static_cast<ParticleCustomParam*>(particle.getVisualData());
-    const Vector4& customData = pCustom != NULL ? pCustom->paramValue : Vector4::ZERO;
+    // No affectors supplied custom visual data; preserve the zero shader input
+    // now that OGRE 14 no longer allocates ParticleVisualData.
+    const Vector4& customData = Vector4::ZERO;
     for (int k=0; k<4; ++k) {
         float* pParams = reinterpret_cast<float*>(pDataVB + k*mVertexSize + ofs);
         pParams[0] = customData.x;

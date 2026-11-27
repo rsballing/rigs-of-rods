@@ -45,6 +45,12 @@ jobs:
           cmake --version
           conan --version
 
+      - name: Export patched MyGUI 3.4.3 Conan recipe
+        shell: pwsh
+        run: |
+          conan export cmake/conan-recipes/mygui --user=anotherfoxguy --channel=stable
+          if ($LASTEXITCODE -ne 0) { throw "MyGUI Conan recipe export failed" }
+
       - name: Configure Windows OGRE 14 game
         shell: pwsh
         run: |

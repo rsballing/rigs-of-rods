@@ -36,68 +36,10 @@ if (-not (Test-Path -LiteralPath $configPath -PathType Leaf)) {
 }
 $config = @(Get-Content -LiteralPath $configPath)
 $enabledPlugins = @($config | Where-Object {
-    $_ -match '^\s*Plugin\s*=\s*([^#;\s]+)\s*
-$failures = @()
-
-foreach ($name in $renderers) {
-    $file = Join-Path $distribution "$name.dll"
-    if (-not (Test-Path -LiteralPath $file -PathType Leaf)) {
-        $failures += "$name : DLL not packaged"
-        continue
-    }
-
-    $module = [RoRWin32PluginProbe]::LoadLibraryEx($file, [IntPtr]::Zero, $flags)
-    if ($module -eq [IntPtr]::Zero) {
-        $code = [System.Runtime.InteropServices.Marshal]::GetLastWin32Error()
-        $explanation = [ComponentModel.Win32Exception]::new($code).Message
-        $failures += "$name : Windows error $code ($explanation)"
-        Write-Warning "Could not load $name : Windows error $code ($explanation)"
-        continue
-    }
-    try {
-        $available += $name
-        Write-Host "Windows loader OK: $name"
-    }
-    finally {
-        if (-not [RoRWin32PluginProbe]::FreeLibrary($module)) {
-            Write-Warning "Could not unload $name after dependency probe"
-        }
-    }
-}
-
-if ($available.Count -eq 0) {
-    throw "No render system DLL can be loaded by Windows. $($failures -join '; ')"
-}
-
-# Every plugin actually enabled in plugins.cfg must load successfully.
-# This catches missing OGRE14/OGRE1.x ABI dependencies before publishing RoR.exe.
-$supportFailures = @()
-foreach ($name in @($enabledPlugins | Where-Object { $_ -notlike 'RenderSystem_*' })) {
-    $file = Join-Path $distribution "$name.dll"
-    if (-not (Test-Path -LiteralPath $file -PathType Leaf)) {
-        $supportFailures += "$name : not packaged"
-        continue
-    }
-    $module = [RoRWin32PluginProbe]::LoadLibraryEx($file, [IntPtr]::Zero, $flags)
-    if ($module -eq [IntPtr]::Zero) {
-        $code = [System.Runtime.InteropServices.Marshal]::GetLastWin32Error()
-        $supportFailures += "$name : Windows error $code"
-        Write-Warning "OGRE support plugin $name could not load (Windows error $code)"
-    }
-    else {
-        try { Write-Host "Windows loader OK: $name" }
-        finally { [void][RoRWin32PluginProbe]::FreeLibrary($module) }
-    }
-}
-
-if ($supportFailures.Count -gt 0) {
-    throw "Enabled OGRE support plugins could not load: $($supportFailures -join '; ')"
-}
-Write-Host "Preflight passed: $($available.Count) of $($renderers.Count) configured Windows render systems load their dependencies."
-
+    $_ -match '^\s*Plugin\s*=\s*([^#;\s]+)\s*$'
 } | ForEach-Object { ($_ -split '=', 2)[1].Trim() })
 $renderers = @($enabledPlugins | Where-Object { $_ -like 'RenderSystem_*' })
-if ($renderers.Count -lt 1) { throw "No renderer enabled in plugins.cfg" }
+if ($renderers.Count -lt 1) { throw 'No renderer enabled in plugins.cfg' }
 $available = @()
 $failures = @()
 
@@ -127,21 +69,23 @@ foreach ($name in $renderers) {
     }
 }
 
-if ($available.Count -eq 0) {
-    throw "No render system DLL can be loaded by Windows. $($failures -join '; ')"
+if ($failures.Count -gt 0) {
+    throw "Enabled render system DLLs could not load. $($failures -join '; ')"
 }
 
-# Also probe common renderer support plugins. Failure is diagnosed in logs,
-# without blocking the release if at least one renderer is available.
-foreach ($name in @('Codec_FreeImage', 'Plugin_ParticleFX', 'Plugin_OctreeSceneManager', 'Plugin_CgProgramManager', 'Caelum')) {
+# Every plugin actually enabled in plugins.cfg must load successfully.
+# This catches missing OGRE14/OGRE1.x ABI dependencies before publishing RoR.exe.
+$supportFailures = @()
+foreach ($name in @($enabledPlugins | Where-Object { $_ -notlike 'RenderSystem_*' })) {
     $file = Join-Path $distribution "$name.dll"
     if (-not (Test-Path -LiteralPath $file -PathType Leaf)) {
-        Write-Warning "Optional OGRE plugin not packaged: $name"
+        $supportFailures += "$name : not packaged"
         continue
     }
     $module = [RoRWin32PluginProbe]::LoadLibraryEx($file, [IntPtr]::Zero, $flags)
     if ($module -eq [IntPtr]::Zero) {
         $code = [System.Runtime.InteropServices.Marshal]::GetLastWin32Error()
+        $supportFailures += "$name : Windows error $code"
         Write-Warning "OGRE support plugin $name could not load (Windows error $code)"
     }
     else {
@@ -150,4 +94,7 @@ foreach ($name in @('Codec_FreeImage', 'Plugin_ParticleFX', 'Plugin_OctreeSceneM
     }
 }
 
-Write-Host "Preflight passed: $($available.Count) of $($renderers.Count) Windows render systems load their dependencies."
+if ($supportFailures.Count -gt 0) {
+    throw "Enabled OGRE support plugins could not load: $($supportFailures -join '; ')"
+}
+Write-Host "Preflight passed: $($available.Count) of $($renderers.Count) configured Windows render systems load their dependencies."

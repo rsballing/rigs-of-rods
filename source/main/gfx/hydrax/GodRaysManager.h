@@ -30,6 +30,9 @@ http://www.gnu.org/copyleft/lesser.txt.
 
 #include "Enums.h"
 
+// Match upstream OGRE 14 explicit standard library includes.
+#include <queue>
+
 /// @addtogroup Gfx
 /// @{
 

@@ -30,6 +30,10 @@ http://www.gnu.org/copyleft/lesser.txt.
 #include "Enums.h"
 #include "Help.h"
 
+// OGRE 14 no longer transitively provides this standard header.
+// Ported from the official RigsOfRods/rigs-of-rods ogre-14 branch.
+#include <queue>
+
 /// @addtogroup Gfx
 /// @{
 

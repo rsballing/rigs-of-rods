@@ -77,7 +77,14 @@ jobs:
           & cmake @cmakeArgs *> ogre14-configure.log
           $code = $LASTEXITCODE
           Get-Content ogre14-configure.log -Tail 160
-          if ($code -ne 0) { throw "OGRE14 configure failed (exit $code)" }
+          if ($code -ne 0) {
+            Write-Host '=== Configure/Conan compiler errors (not merely final warnings) ==='
+            $errors = Select-String -Path 'ogre14-configure.log' -Pattern 'fatal error|error C[0-9]{4}|error LNK[0-9]{4}|: error:|FAILED:|ConanException|ERROR:|CMake Error'
+            if ($errors) {
+              $errors | Select-Object -First 110 | ForEach-Object { Write-Host $_.Line }
+            }
+            throw "OGRE14 configure failed (exit $code)"
+          }
 
       # Conan/OGRE dependency builds are expensive. Save the package cache as
       # soon as configuration finishes, even if game compilation subsequently

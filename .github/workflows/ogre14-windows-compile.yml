@@ -29,9 +29,11 @@ jobs:
         shell: cmd
         run: git clone https://git.anotherfoxguy.com/AnotherFoxGuy/build-tools.git %BUILD_TOOLS_PATH%
 
-      - uses: actions/cache@v6
+      - name: Restore Conan dependency cache
+        id: conan_cache
+        uses: actions/cache/restore@v6
         with:
-          key: ogre14-conan-win-${{ hashFiles('conanfile.py') }}
+          key: ogre14-conan-win-${{ hashFiles('conanfile.py', 'cmake/conan-recipes/mygui/conanfile.py') }}
           path: ~/.conan2/
 
       - uses: ilammy/msvc-dev-cmd@v1
@@ -76,6 +78,16 @@ jobs:
           $code = $LASTEXITCODE
           Get-Content ogre14-configure.log -Tail 160
           if ($code -ne 0) { throw "OGRE14 configure failed (exit $code)" }
+
+      # Conan/OGRE dependency builds are expensive. Save the package cache as
+      # soon as configuration finishes, even if game compilation subsequently
+      # fails, so subsequent API-fix iterations do not rebuild OGRE/MyGUI.
+      - name: Save Conan packages after configure
+        if: always() && steps.conan_cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          key: ogre14-conan-win-${{ hashFiles('conanfile.py', 'cmake/conan-recipes/mygui/conanfile.py') }}
+          path: ~/.conan2/
 
       - name: Compile and install Windows OGRE 14 game
         shell: pwsh

@@ -27,6 +27,28 @@ class Ogre14MigrationContract(unittest.TestCase):
         self.assertNotIn("ogre3d/1.11.6.1@", deps)
         self.assertIn("find_package(OGRE 14 REQUIRED", cmake)
 
+    def test_full_game_language_standard_is_cxx17(self):
+        # The first complete Windows/Linux build got as far as compiling RoR
+        # but failed in MyGUI's std::string_view headers. CMake must explicitly
+        # set C++17 and must not force a conflicting Linux -std=c++11 flag.
+        root = source("CMakeLists.txt")
+        game = source("source/main/CMakeLists.txt")
+        self.assertIn("set(CMAKE_CXX_STANDARD 17)", root)
+        self.assertIn("set(CMAKE_CXX_STANDARD_REQUIRED ON)", root)
+        self.assertIn("set(CMAKE_CXX_EXTENSIONS OFF)", root)
+        self.assertNotIn('set(CMAKE_CXX_FLAGS "-std=c++11', root)
+        self.assertIn("target_compile_features(${BINNAME} PRIVATE cxx_std_17)", game)
+
+    def test_local_mygui_conan_recipe_avoids_missing_pch(self):
+        # MyGUI 3.4.3 does not ship the legacy PrecompiledHeader.cmake
+        # expected by the default published Conan recipe.
+        recipe = source("cmake/conan-recipes/mygui/conanfile.py")
+        windows = source(".github/workflows/ogre14-windows-compile.yml")
+        generic = source(".github/workflows/build-game.yml")
+        self.assertIn("if os.path.isfile(pch):", recipe)
+        self.assertIn("conan export cmake/conan-recipes/mygui", windows)
+        self.assertIn("conan export cmake/conan-recipes/mygui", generic)
+
     def test_existing_soft_body_glitch_protection_kept(self):
         cab = source("source/main/physics/flex/FlexObj.cpp")
         safety = source("source/main/physics/flex/CabMeshSafety.h")

@@ -49,6 +49,11 @@ jobs:
 
         shell: bash
 
+      - name: Export experimental MyGUI recipe for OGRE 14
+        if: github.ref == 'refs/heads/ogre14-migration' || github.head_ref == 'ogre14-migration'
+        shell: bash
+        run: conan export cmake/conan-recipes/mygui --user=anotherfoxguy --channel=stable
+
       - name: Configure
         run: |
           conan profile detect --force
@@ -114,6 +119,11 @@ jobs:
 
       - name: Enable Developer Command Prompt
         uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Export experimental MyGUI recipe for OGRE 14
+        if: github.ref == 'refs/heads/ogre14-migration' || github.head_ref == 'ogre14-migration'
+        shell: cmd
+        run: conan export cmake/conan-recipes/mygui --user=anotherfoxguy --channel=stable
 
       - name: Configure
         run: |

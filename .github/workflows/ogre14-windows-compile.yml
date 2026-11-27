@@ -132,6 +132,10 @@ jobs:
             throw "OGRE14 compilation failed (exit $code)"
           }
 
+      - name: Bundle signed Microsoft DirectX runtime DLLs
+        shell: pwsh
+        run: ./tools/windows/Add-LegacyDirectX.ps1 -DestinationDirectory './redist'
+
       - name: Verify built game and modern shader assets
         shell: pwsh
         run: |

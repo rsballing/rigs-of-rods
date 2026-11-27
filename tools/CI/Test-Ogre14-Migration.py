@@ -49,6 +49,27 @@ class Ogre14MigrationContract(unittest.TestCase):
         self.assertIn("conan export cmake/conan-recipes/mygui", windows)
         self.assertIn("conan export cmake/conan-recipes/mygui", generic)
 
+    def test_official_ogre14_queue_and_hydrax_ports(self):
+        # The RigsOfRods/rigs-of-rods ogre-14 branch replaces the removed
+        # WorkQueue request-handler API with task-based queue submissions.
+        repo_h = source("source/main/gui/panels/GUI_RepositorySelector.h")
+        repo_cpp = source("source/main/gui/panels/GUI_RepositorySelector.cpp")
+        self.assertNotIn("Ogre::WorkQueue::RequestHandler", repo_h)
+        self.assertNotIn("RepoImageRequestHandler", repo_h)
+        self.assertNotIn("addRequest(m_ogre_workqueue_channel", repo_cpp)
+        self.assertEqual(repo_cpp.count("getWorkQueue()->addTask("), 2)
+        for file in ("RttManager.h", "GodRaysManager.h"):
+            hydrax = source("source/main/gfx/hydrax/" + file)
+            self.assertIn("#include <queue>", hydrax)
+
+    def test_custom_colored_text_does_not_touch_private_ogre14_fields(self):
+        colored = source("source/main/gfx/ColoredTextAreaOverlayElement.cpp")
+        self.assertNotIn("mColoursChanged =", colored)
+        self.assertNotIn("mRenderOp.", colored)
+        self.assertNotIn("mAllocSize", colored)
+        self.assertIn("getRenderOperation(renderOp)", colored)
+        self.assertIn("getNumVertices() / 6", colored)
+
     def test_existing_soft_body_glitch_protection_kept(self):
         cab = source("source/main/physics/flex/FlexObj.cpp")
         safety = source("source/main/physics/flex/CabMeshSafety.h")

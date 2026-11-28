@@ -171,7 +171,11 @@ jobs:
           $wd = (Resolve-Path './redist').Path
           # Presence of this folder enables RoR's portable-user-data mode,
           # keeping the diagnostic log in the Actions artifact.
-          New-Item -Path (Join-Path $wd 'config') -ItemType Directory -Force | Out-Null
+          $portableDir = Join-Path $wd 'config'
+          if (-not (Test-Path -LiteralPath $portableDir)) {
+            New-Item -Path $portableDir -ItemType Directory -Force | Out-Null
+            New-Item -Path (Join-Path $wd '.ci-portable-config-marker') -ItemType File -Force | Out-Null
+          }
           $exe = Join-Path $wd 'RoR.exe'
           $logPath = Join-Path $wd 'config/logs/RoR.log'
           $proc = Start-Process -FilePath $exe -WorkingDirectory $wd -PassThru
@@ -207,6 +211,20 @@ jobs:
           }
           Write-Host 'Smoke test completed without a detected shader error; real GPU verification is still required.'
 
+      - name: Preserve startup log without packaging CI-only config
+        if: always()
+        shell: pwsh
+        run: |
+          $diag = './ogre14-smoke-diagnostics'
+          New-Item -Path $diag -ItemType Directory -Force | Out-Null
+          if (Test-Path './redist/config/logs/RoR.log') {
+            Copy-Item './redist/config/logs/RoR.log' (Join-Path $diag 'RoR.log') -Force
+          }
+          if (Test-Path './redist/.ci-portable-config-marker') {
+            Remove-Item './redist/config' -Recurse -Force -ErrorAction SilentlyContinue
+            Remove-Item './redist/.ci-portable-config-marker' -Force -ErrorAction SilentlyContinue
+          }
+
       - name: Upload diagnostic logs even if compilation fails
         if: always()
         uses: actions/upload-artifact@v7
@@ -220,7 +238,7 @@ jobs:
             build/CMakeFiles/CMakeConfigureLog.yaml
             build/CMakeFiles/CMakeError.log
             build/CMakeFiles/CMakeOutput.log
-            redist/config/logs/RoR.log
+            ogre14-smoke-diagnostics/RoR.log
 
       - name: Upload testable Windows game only after full build and DLL validation
         uses: actions/upload-artifact@v7

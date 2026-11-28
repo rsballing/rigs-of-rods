@@ -1122,6 +1122,9 @@ int main(int argc, char *argv[])
                             App::GetDiscordRpc()->UpdatePresence();
                             App::sim_state->setVal((int)SimState::RUNNING);
                             App::app_state->setVal((int)AppState::SIMULATION);
+                            // Enter editor mode after the terrain picker finishes loading.
+                            if (App::GetGuiManager()->GameMainMenu.ConsumeOpenEditorOnLoad())
+                                App::GetGameContext()->PushMessage(MSG_EDI_ENTER_TERRN_EDITOR_REQUESTED);
                             App::GetGuiManager()->GameMainMenu .SetVisible(false);
                             App::GetGuiManager()->MenuWallpaper->hide();
                             App::GetGuiManager()->LoadingWindow.SetVisible(false);

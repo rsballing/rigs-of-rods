@@ -711,6 +711,10 @@ void StaticBillboardSet::updateAll(const Vector3 &cameraDirection)
    if (s_nSelfInstances == 0)
       return;
 
+   // These guards execute once per camera update; log each failure only once.
+   static bool warnedMissingMatrix = false;
+   static bool warnedMissingBillboardConstants = false;
+
    //Set shader parameter so material will face camera
    Vector3 forward = cameraDirection;
    Vector3 vRight = forward.crossProduct(Vector3::UNIT_Y);
@@ -769,8 +773,12 @@ void StaticBillboardSet::updateAll(const Vector3 &cameraDirection)
          GpuProgramParametersSharedPtr params = p->getVertexProgramParameters();
          if (!params->_findNamedConstantDefinition("worldViewProj", false))
          {
-            LogManager::getSingleton().logMessage(
-               "[RoR|PagedGeometry] Sprite_vp has no worldViewProj; skipping unsupported impostor shader.");
+            if (!warnedMissingMatrix)
+            {
+               LogManager::getSingleton().logMessage(
+                  "[RoR|PagedGeometry] Sprite_vp has no worldViewProj; skipping unsupported impostor shader.");
+               warnedMissingMatrix = true;
+            }
             ++i1;
             continue;
          }
@@ -801,8 +809,12 @@ void StaticBillboardSet::updateAll(const Vector3 &cameraDirection)
       const GpuConstantDefinition* vDef = params->_findNamedConstantDefinition(vScroll, false);
       if (!quadDef || !uDef || !vDef)
       {
-         LogManager::getSingleton().logMessage(
-            "[RoR|PagedGeometry] Sprite billboard shader lacks quad or scroll uniforms; skipping update.");
+         if (!warnedMissingBillboardConstants)
+         {
+            LogManager::getSingleton().logMessage(
+               "[RoR|PagedGeometry] Sprite billboard shader lacks quad or scroll uniforms; skipping update.");
+            warnedMissingBillboardConstants = true;
+         }
          ++i1;
          continue;
       }

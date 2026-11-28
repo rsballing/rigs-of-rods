@@ -43,6 +43,7 @@ public:
     Ogre::Vector3 rotation = Ogre::Vector3::ZERO;
     Ogre::Vector3 initial_position = Ogre::Vector3::ZERO;
     Ogre::Vector3 initial_rotation = Ogre::Vector3::ZERO;
+    Ogre::Vector3 initial_scale = Ogre::Vector3::UNIT_SCALE; // ODEF baseline; .tobj does not store per-instance scale.
     int tobj_cache_id = -1;
     std::string tobj_comments;
     // ~ only for static objects:

@@ -109,8 +109,13 @@ void GrassLoader::frameUpdate()
 
 		layer->_updateShaders();
 
-		GpuProgramParametersSharedPtr params = layer->material->getTechnique(0)->getPass(0)->getVertexProgramParameters();
-		if (layer->animate){
+		Pass* pass = layer->material->getTechnique(0)->getPass(0);
+		// If shader compilation failed, _updateShaders() retained the original
+		// material; it has no wind uniforms to update.
+		if (!pass->hasVertexProgram())
+			continue;
+		GpuProgramParametersSharedPtr params = pass->getVertexProgramParameters();
+		if (layer->animate && params->_findNamedConstantDefinition("time", false)){
 			//Increment animation frame
 			layer->waveCount += ellapsed * (layer->animSpeed * Math::PI);
 			if (layer->waveCount > Math::PI*2) layer->waveCount -= Math::PI*2;
@@ -1381,6 +1386,19 @@ void GrassLayer::_updateShaders()
 				} else
 				{
 					shaderLanguage = vertexShader->getLanguage();
+				}
+
+				// OGRE 14 may reject legacy GLSL/HLSL sources on modern renderers.
+				// An unsupported program has no worldViewProj uniform: binding it
+				// would throw InvalidParametersException and abort terrain loading.
+				// Keep the original grass material instead of crashing the game.
+				if (!vertexShader->isSupported() ||
+					!vertexShader->getDefaultParameters()->_findNamedConstantDefinition("worldViewProj", false))
+				{
+					LogManager::getSingleton().logMessage(
+						"[RoR|PagedGeometry] Grass shader '" + vsName +
+						"' has no usable worldViewProj parameter; using unmodified grass material.");
+					return;
 				}
 
 				//Now the vertex shader (vertexShader) has either been found or just generated

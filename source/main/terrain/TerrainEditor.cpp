@@ -35,6 +35,9 @@
 #include "TObjFileFormat.h"
 #include "PlatformUtils.h"
 
+#include <algorithm>
+#include <exception>
+
 using namespace RoR;
 using namespace Ogre;
 
@@ -79,7 +82,7 @@ void TerrainEditor::DrawEditorPanel()
 
         ImGui::Text("Scene objects (%d)", static_cast<int>(objects.size()));
         ImGui::InputText("Search objects", m_filter, sizeof(m_filter));
-        if (ImGui::BeginChild("TerrainObjectList", ImVec2(0.f, 150.f), true))
+        ImGui::BeginChild("TerrainObjectList", ImVec2(0.f, 150.f), true);
         {
             for (int i = 0; i < static_cast<int>(objects.size()); ++i)
             {
@@ -92,10 +95,15 @@ void TerrainEditor::DrawEditorPanel()
                     this->SetSelectedObjectByID(i);
                 ImGui::PopID();
             }
-            ImGui::EndChild();
         }
+        ImGui::EndChild();
 
-        ImGui::Checkbox("Follow selected object with character", &m_object_tracking);
+        if (ImGui::Checkbox("Follow selected object with character", &m_object_tracking) && m_object_tracking)
+        {
+            const TerrainEditorObjectPtr& tracked = this->FetchSelectedObject();
+            if (tracked != TERRAINEDITOROBJECTPTR_NULL)
+                App::GetGameContext()->GetPlayerCharacter()->setPosition(tracked->position);
+        }
         TerrainEditorObjectPtr selected = this->FetchSelectedObject();
         if (selected != TERRAINEDITOROBJECTPTR_NULL)
         {
@@ -243,9 +251,17 @@ void TerrainEditor::DrawEditorPanel()
 
 void TerrainEditor::UpdateInputEvents(float dt)
 {
+    // Do not let editing text fields/sliders also move a selected object.
+    if (ImGui::GetIO().WantCaptureKeyboard || ImGui::IsAnyItemActive())
+    {
+        if (App::GetInputEngine()->getEventBoolValueBounce(EV_COMMON_TOGGLE_TERRAIN_EDITOR))
+            App::GetGameContext()->PushMessage(MSG_EDI_LEAVE_TERRN_EDITOR_REQUESTED);
+        return;
+    }
+
     auto& object_list = App::GetGameContext()->GetTerrain()->getObjectManager()->GetEditorObjects();
 
-    if (ImGui::IsMouseClicked(2)) // Middle button
+    if (!ImGui::GetIO().WantCaptureMouse && ImGui::IsMouseClicked(2)) // Middle button
     {
         ImVec2 mouse_screen = ImGui::GetIO().MousePos / ImGui::GetIO().DisplaySize;
         Ogre::Ray terrain_editor_mouse_ray = App::GetCameraManager()->GetCamera()->getCameraToViewportRay(mouse_screen.x, mouse_screen.y);

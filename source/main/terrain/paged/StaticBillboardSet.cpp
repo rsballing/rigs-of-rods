@@ -73,8 +73,17 @@ mFadeInvisibleDist      (0.f)
       if (s_nSelfInstances == 0)
       {
          HighLevelGpuProgramManager& mgr = HighLevelGpuProgramManager::getSingleton();
-         s_isGLSL = mgr.isLanguageSupported("glsl");
-         Ogre::String shaderLanguage = s_isGLSL ? "glsl" : mgr.isLanguageSupported("hlsl") ? "hlsl" : "cg";
+         // isLanguageSupported() reports registered language factories, not
+         // necessarily a shader language usable by the ACTIVE renderer.
+         // Selecting GLSL on Direct3D leads to a program with no
+         // worldViewProj constant definition (and a fatal Ogre exception).
+         const Ogre::String rendererName = Root::getSingleton().getRenderSystem()->getName();
+         s_isGLSL = rendererName.find("OpenGL") != Ogre::String::npos &&
+                    mgr.isLanguageSupported("glsl");
+         Ogre::String shaderLanguage =
+            s_isGLSL ? "glsl" :
+            (rendererName.find("Direct3D") != Ogre::String::npos &&
+             mgr.isLanguageSupported("hlsl")) ? "hlsl" : "cg";
 
          //First shader, simple camera-alignment
          String vertexProg;

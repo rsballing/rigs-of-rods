@@ -80,6 +80,7 @@ class TerrainEditor
 {
 public:
     void UpdateInputEvents(float dt);
+    void DrawEditorPanel(); //!< ImGui scene-object browser and transform inspector.
     void WriteSeparateOutputFile(); //!< Writes 'editor_out.log' to 'config' directory - original solution, still used for zipped terrains.
     void WriteEditsToTobjFiles(); //!< Updates existing TOBJ files - new solution, only for projects (unzipped terrains).
     void ClearSelectedObject();
@@ -92,6 +93,8 @@ public:
 private:
 
     bool                m_object_tracking = true;
+    char                m_filter[96] = {};
+    char                m_new_odef_name[128] = {};
     int                 m_rotation_axis = 1;        //!< 0=X, 1=Y, 2=Z
     std::string         m_last_object_name;
 

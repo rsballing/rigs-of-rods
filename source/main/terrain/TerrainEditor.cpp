@@ -138,6 +138,8 @@ void TerrainEditor::DrawEditorPanel()
                         Ogre::Vector3(scale[0], scale[1], scale[2]));
                 }
                 ImGui::TextDisabled("Size is NOT stored in .tobj; edit the .odef scale to keep it.");
+                if (ImGui::Button("Reset size preview"))
+                    selected->static_object_node->setScale(selected->initial_scale);
             }
 
             if (ImGui::Button("Reset position / rotation"))

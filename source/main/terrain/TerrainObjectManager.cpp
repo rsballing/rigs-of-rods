@@ -675,6 +675,7 @@ bool TerrainObjectManager::LoadTerrainObject(const Ogre::String& name, const Ogr
     object->rotation = rot;
     object->initial_position = pos;
     object->initial_rotation = rot;
+    object->initial_scale = odef->header.scale;
     object->static_object_node = tenode;
     object->enable_collisions = enable_collisions;
     object->script_handler = scripthandler;
@@ -930,10 +931,13 @@ bool TerrainObjectManager::LoadTerrainObject(const Ogre::String& name, const Ogr
     for (ODefSpotlight& spotl: odef->spotlights)
     {
         Light* spotLight = App::GetGfxScene()->GetSceneManager()->createLight();
+        // Attach first: modern OGRE stores light transforms on scene nodes.
+        SceneNode* spot_node = tenode->createChildSceneNode();
+        spot_node->attachObject(spotLight);
 
         spotLight->setType(Light::LT_SPOTLIGHT);
-        spotLight->setPosition(spotl.pos);
-        spotLight->setDirection(spotl.dir);
+        spot_node->setPosition(spotl.pos);
+        spot_node->setDirection(spotl.dir);
         spotLight->setAttenuation(spotl.range, 1.0, 0.3, 0.0);
         spotLight->setDiffuseColour(spotl.color);
         spotLight->setSpecularColour(spotl.color);
@@ -948,17 +952,18 @@ bool TerrainObjectManager::LoadTerrainObject(const Ogre::String& name, const Ogr
         lflare->setDefaultDimensions(fsize, fsize);
 
         SceneNode *sn = tenode->createChildSceneNode();
-        sn->attachObject(spotLight);
         sn->attachObject(lflare);
     }
 
     for (ODefPointLight& plight : odef->point_lights)
     {
         Light* pointlight = App::GetGfxScene()->GetSceneManager()->createLight();
+        SceneNode* point_node = tenode->createChildSceneNode();
+        point_node->attachObject(pointlight);
 
         pointlight->setType(Light::LT_POINT);
-        pointlight->setPosition(plight.pos);
-        pointlight->setDirection(plight.dir);
+        point_node->setPosition(plight.pos);
+        point_node->setDirection(plight.dir);
         pointlight->setAttenuation(plight.range, 1.0, 0.3, 0.0);
         pointlight->setDiffuseColour(plight.color);
         pointlight->setSpecularColour(plight.color);
@@ -972,7 +977,6 @@ bool TerrainObjectManager::LoadTerrainObject(const Ogre::String& name, const Ogr
         lflare->setDefaultDimensions(fsize, fsize);
 
         SceneNode *sn = tenode->createChildSceneNode();
-        sn->attachObject(pointlight);
         sn->attachObject(lflare);
     }
 

@@ -43,6 +43,7 @@ public:
     Ogre::Vector3 rotation = Ogre::Vector3::ZERO;
     Ogre::Vector3 initial_position = Ogre::Vector3::ZERO;
     Ogre::Vector3 initial_rotation = Ogre::Vector3::ZERO;
+    Ogre::Vector3 initial_scale = Ogre::Vector3::UNIT_SCALE; // ODEF baseline; .tobj does not store per-instance scale.
     int tobj_cache_id = -1;
     std::string tobj_comments;
     // ~ only for static objects:
@@ -70,16 +71,19 @@ public:
     void setActorInstanceId(ActorInstanceID_t instance_id);
 };
 
-/// Minimalist editor mode; orig. code by Ulteq/2016
-/// * Enter/Exit from/to simulation by Ctrl+Y (see EV_COMMON_TOGGLE_TERRAIN_EDITOR)
-/// * Select object by middle mouse button or Enter key (closest to avatar)
-/// * Rotate/move selected object with keys
-/// * Select/edit also preloaded actors - this resets the actor (added 2024 by Petr Ohlidal)
-/// Upon exit, the original *.tobj files are updated in place (only if terrain is unzipped in directory)
+/// Terrain editing mode; original keyboard controls by Ulteq/2016.
+/// * Enter/exit via Ctrl+Y or the ImGui editor/Play controls.
+/// * Select scenery from the object list, middle-click, or the original keys.
+/// * Move/rotate numerically or with legacy keyboard controls.
+/// * Preloaded actors can be selected; their transforms respawn their actor.
+/// * Save writes .tobj files for unzipped projects only. Leaving edit mode
+///   always writes an editor_out.log fallback (including for zipped maps).
+/// * Per-instance size is currently visual-only because .tobj has no scale field.
 class TerrainEditor
 {
 public:
     void UpdateInputEvents(float dt);
+    void DrawEditorPanel(); //!< ImGui scene-object browser and transform inspector.
     void WriteSeparateOutputFile(); //!< Writes 'editor_out.log' to 'config' directory - original solution, still used for zipped terrains.
     void WriteEditsToTobjFiles(); //!< Updates existing TOBJ files - new solution, only for projects (unzipped terrains).
     void ClearSelectedObject();
@@ -92,6 +96,8 @@ public:
 private:
 
     bool                m_object_tracking = true;
+    char                m_filter[96] = {};
+    char                m_new_odef_name[128] = {};
     int                 m_rotation_axis = 1;        //!< 0=X, 1=Y, 2=Z
     std::string         m_last_object_name;
 

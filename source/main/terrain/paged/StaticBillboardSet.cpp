@@ -73,8 +73,17 @@ mFadeInvisibleDist      (0.f)
       if (s_nSelfInstances == 0)
       {
          HighLevelGpuProgramManager& mgr = HighLevelGpuProgramManager::getSingleton();
-         s_isGLSL = mgr.isLanguageSupported("glsl");
-         Ogre::String shaderLanguage = s_isGLSL ? "glsl" : mgr.isLanguageSupported("hlsl") ? "hlsl" : "cg";
+         // isLanguageSupported() reports registered language factories, not
+         // necessarily a shader language usable by the ACTIVE renderer.
+         // Selecting GLSL on Direct3D leads to a program with no
+         // worldViewProj constant definition (and a fatal Ogre exception).
+         const Ogre::String rendererName = Root::getSingleton().getRenderSystem()->getName();
+         s_isGLSL = rendererName.find("OpenGL") != Ogre::String::npos &&
+                    mgr.isLanguageSupported("glsl");
+         Ogre::String shaderLanguage =
+            s_isGLSL ? "glsl" :
+            (rendererName.find("Direct3D") != Ogre::String::npos &&
+             mgr.isLanguageSupported("hlsl")) ? "hlsl" : "cg";
 
          //First shader, simple camera-alignment
          String vertexProg;
@@ -513,10 +522,7 @@ void StaticBillboardSet::build()
          mPtrMesh->_setBoundingSphereRadius(temp.length() * 0.5f);
 
          // Loading mesh
-         Ogre::LoggingLevel logLev = LogManager::getSingleton().getDefaultLog()->getLogDetail();
-         LogManager::getSingleton().setLogDetail(LL_LOW);
          mPtrMesh->load();
-         LogManager::getSingleton().setLogDetail(logLev);
       }
 
       // Create an entity for the mesh
@@ -660,7 +666,15 @@ MaterialPtr StaticBillboardSet::getFadeMaterial(const Ogre::MaterialPtr &protoMa
             //Setup vertex program
             pass->setVertexProgram("SpriteFade_vp");
             GpuProgramParametersSharedPtr params = pass->getVertexProgramParameters();
-
+            // OGRE 14 can reject the legacy SpriteFade shader. Do not abort
+            // terrain creation when its world-view-projection uniform is absent.
+            if (!params->_findNamedConstantDefinition("worldViewProj", false))
+            {
+               LogManager::getSingleton().logMessage(
+                  "[RoR|PagedGeometry] SpriteFade_vp has no worldViewProj; skipping fading shader bindings.");
+               continue;
+            }
+            params->setIgnoreMissingParams(true); // Optional uniforms can be optimized out.
             params->setNamedAutoConstant("worldViewProj", GpuProgramParameters::ACT_WORLDVIEWPROJ_MATRIX);
 
             static const Ogre::String uScroll = "uScroll", vScroll = "vScroll",
@@ -706,6 +720,10 @@ void StaticBillboardSet::updateAll(const Vector3 &cameraDirection)
    if (s_nSelfInstances == 0)
       return;
 
+   // These guards execute once per camera update; log each failure only once.
+   static bool warnedMissingMatrix = false;
+   static bool warnedMissingBillboardConstants = false;
+
    //Set shader parameter so material will face camera
    Vector3 forward = cameraDirection;
    Vector3 vRight = forward.crossProduct(Vector3::UNIT_Y);
@@ -748,10 +766,6 @@ void StaticBillboardSet::updateAll(const Vector3 &cameraDirection)
    static const Ogre::String uScroll = "uScroll", vScroll = "vScroll", preRotatedQuad0 = "preRotatedQuad[0]",
       preRotatedQuad1 = "preRotatedQuad[1]", preRotatedQuad2 = "preRotatedQuad[2]", preRotatedQuad3 = "preRotatedQuad[3]";
 
-   // SVA for Ogre::Material hack
-   const GpuConstantDefinition *pGPU_ConstDef_preRotatedQuad0 = 0,
-      *pGPU_ConstDef_uScroll = 0, *pGPU_ConstDef_vScroll = 0;
-
    // For each material in use by the billboard system..
    SBMaterialRefList::iterator i1 = SBMaterialRef::getList().begin(), iend = SBMaterialRef::getList().end();
    while (i1 != iend)
@@ -765,9 +779,20 @@ void StaticBillboardSet::updateAll(const Vector3 &cameraDirection)
          static const Ogre::String Sprite_vp = "Sprite_vp";
          p->setVertexProgram(Sprite_vp);
 
-         p->getVertexProgramParameters()->setNamedAutoConstant("worldViewProj", GpuProgramParameters::ACT_WORLDVIEWPROJ_MATRIX);
-
          GpuProgramParametersSharedPtr params = p->getVertexProgramParameters();
+         if (!params->_findNamedConstantDefinition("worldViewProj", false))
+         {
+            if (!warnedMissingMatrix)
+            {
+               LogManager::getSingleton().logMessage(
+                  "[RoR|PagedGeometry] Sprite_vp has no worldViewProj; skipping unsupported impostor shader.");
+               warnedMissingMatrix = true;
+            }
+            ++i1;
+            continue;
+         }
+         params->setIgnoreMissingParams(true); // Ignore compiler-optimized optional uniforms.
+         params->setNamedAutoConstant("worldViewProj", GpuProgramParameters::ACT_WORLDVIEWPROJ_MATRIX);
          params->setNamedAutoConstant(uScroll, GpuProgramParameters::ACT_CUSTOM);
          params->setNamedAutoConstant(vScroll, GpuProgramParameters::ACT_CUSTOM);
          params->setNamedAutoConstant(preRotatedQuad0, GpuProgramParameters::ACT_CUSTOM);
@@ -785,25 +810,29 @@ void StaticBillboardSet::updateAll(const Vector3 &cameraDirection)
       //params->setNamedConstant(uScroll, p->getTextureUnitState(0)->getTextureUScroll());
       //params->setNamedConstant(vScroll, p->getTextureUnitState(0)->getTextureVScroll());
 
-      // SVA some hack of Ogre::Material.
-      // Since material are cloned and use same vertex shader "Sprite_vp" hardware GPU indices
-      // must be same. I don`t know planes of Ogre Team to change this behaviour.
-      // Therefore this may be unsafe code. Instead of 3 std::map lookups(map::find(const Ogre::String&)) do only 1
+      // Always resolve offsets for THIS material's shader parameter layout.
+      // The old cross-material pointer cache could dereference missing or
+      // stale constant definitions after an OGRE 14 shader compile failure.
+      const GpuConstantDefinition* quadDef = params->_findNamedConstantDefinition(preRotatedQuad0, false);
+      const GpuConstantDefinition* uDef = params->_findNamedConstantDefinition(uScroll, false);
+      const GpuConstantDefinition* vDef = params->_findNamedConstantDefinition(vScroll, false);
+      if (!quadDef || !uDef || !vDef)
       {
-         const GpuConstantDefinition *def = params->_findNamedConstantDefinition(preRotatedQuad0, true);
-         if (def != pGPU_ConstDef_preRotatedQuad0) // new material, reread
+         if (!warnedMissingBillboardConstants)
          {
-            pGPU_ConstDef_preRotatedQuad0 = def;
-            pGPU_ConstDef_uScroll         = params->_findNamedConstantDefinition(uScroll, true);
-            pGPU_ConstDef_vScroll         = params->_findNamedConstantDefinition(vScroll, true);
+            LogManager::getSingleton().logMessage(
+               "[RoR|PagedGeometry] Sprite billboard shader lacks quad or scroll uniforms; skipping update.");
+            warnedMissingBillboardConstants = true;
          }
+         ++i1;
+         continue;
       }
 
       float fUScroll = (float)p->getTextureUnitState(0)->getTextureUScroll(),
          fVScroll = (float)p->getTextureUnitState(0)->getTextureVScroll();
-      params->_writeRawConstants(pGPU_ConstDef_preRotatedQuad0->physicalIndex, pQuad, 16);
-      params->_writeRawConstants(pGPU_ConstDef_uScroll->physicalIndex, &fUScroll, 1);
-      params->_writeRawConstants(pGPU_ConstDef_vScroll->physicalIndex, &fVScroll, 1);
+      params->_writeRawConstants(quadDef->physicalIndex, pQuad, 16);
+      params->_writeRawConstants(uDef->physicalIndex, &fUScroll, 1);
+      params->_writeRawConstants(vDef->physicalIndex, &fVScroll, 1);
       
       ++i1; // next material in billboard system
    }

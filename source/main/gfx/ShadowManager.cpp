@@ -96,7 +96,11 @@ int ShadowManager::updateShadowTechnique()
 
 void ShadowManager::processPSSM()
 {
-    App::GetGfxScene()->GetSceneManager()->setShadowTechnique(Ogre::SHADOWTYPE_TEXTURE_ADDITIVE_INTEGRATED);
+    // OGRE 14: use native integrated shadow mapping, compatible with
+    // TerrainMaterialGeneratorA's RTShaderSystem PSSM receiver.
+    // The older additive depth shader remains on graphics-overhaul.
+    App::GetGfxScene()->GetSceneManager()->setShadowTechnique(
+        Ogre::SHADOWTYPE_TEXTURE_MODULATIVE_INTEGRATED);
 
     // Re-read quality when PSSM is configured, including after terrain reloads.
     PSSM_Shadows.Quality = App::gfx_shadow_quality->getInt();
@@ -112,35 +116,42 @@ void ShadowManager::processPSSM()
     App::GetGfxScene()->GetSceneManager()->setShadowCasterRenderBackFaces(true);
 
     //Caster is set via materials
-    MaterialPtr shadowMat = MaterialManager::getSingleton().getByName("Ogre/shadow/depth/caster");
+    MaterialPtr shadowMat =
+        MaterialManager::getSingleton().getByName("Ogre/TextureShadowCaster");
+    if (!shadowMat)
+    {
+        OGRE_EXCEPT(Ogre::Exception::ERR_ITEM_NOT_FOUND,
+            "OGRE14 shadow caster material is missing; check OgreCore resource pack",
+            "RoR::ShadowManager::processPSSM");
+    }
     App::GetGfxScene()->GetSceneManager()->setShadowTextureCasterMaterial(shadowMat);
 
     if (PSSM_Shadows.Quality == 3)
     {
-        App::GetGfxScene()->GetSceneManager()->setShadowTextureConfig(0, 4096, 4096, PF_FLOAT32_R);
-        App::GetGfxScene()->GetSceneManager()->setShadowTextureConfig(1, 3072, 3072, PF_FLOAT32_R);
-        App::GetGfxScene()->GetSceneManager()->setShadowTextureConfig(2, 2048, 2048, PF_FLOAT32_R);
+        App::GetGfxScene()->GetSceneManager()->setShadowTextureConfig(0, 4096, 4096, PF_X8B8G8R8);
+        App::GetGfxScene()->GetSceneManager()->setShadowTextureConfig(1, 3072, 3072, PF_X8B8G8R8);
+        App::GetGfxScene()->GetSceneManager()->setShadowTextureConfig(2, 2048, 2048, PF_X8B8G8R8);
         PSSM_Shadows.lambda = 0.965f;
     }
     else if (PSSM_Shadows.Quality == 2)
     {
-        App::GetGfxScene()->GetSceneManager()->setShadowTextureConfig(0, 3072, 3072, PF_FLOAT32_R);
-        App::GetGfxScene()->GetSceneManager()->setShadowTextureConfig(1, 2048, 2048, PF_FLOAT32_R);
-        App::GetGfxScene()->GetSceneManager()->setShadowTextureConfig(2, 2048, 2048, PF_FLOAT32_R);
+        App::GetGfxScene()->GetSceneManager()->setShadowTextureConfig(0, 3072, 3072, PF_X8B8G8R8);
+        App::GetGfxScene()->GetSceneManager()->setShadowTextureConfig(1, 2048, 2048, PF_X8B8G8R8);
+        App::GetGfxScene()->GetSceneManager()->setShadowTextureConfig(2, 2048, 2048, PF_X8B8G8R8);
         PSSM_Shadows.lambda = 0.97f;
     }
     else if (PSSM_Shadows.Quality == 1)
     {
-        App::GetGfxScene()->GetSceneManager()->setShadowTextureConfig(0, 2048, 2048, PF_FLOAT32_R);
-        App::GetGfxScene()->GetSceneManager()->setShadowTextureConfig(1, 1024, 1024, PF_FLOAT32_R);
-        App::GetGfxScene()->GetSceneManager()->setShadowTextureConfig(2, 1024, 1024, PF_FLOAT32_R);
+        App::GetGfxScene()->GetSceneManager()->setShadowTextureConfig(0, 2048, 2048, PF_X8B8G8R8);
+        App::GetGfxScene()->GetSceneManager()->setShadowTextureConfig(1, 1024, 1024, PF_X8B8G8R8);
+        App::GetGfxScene()->GetSceneManager()->setShadowTextureConfig(2, 1024, 1024, PF_X8B8G8R8);
         PSSM_Shadows.lambda = 0.975f;
     }
     else
     {
-        App::GetGfxScene()->GetSceneManager()->setShadowTextureConfig(0, 1024, 1024, PF_FLOAT32_R);
-        App::GetGfxScene()->GetSceneManager()->setShadowTextureConfig(1, 1024, 1024, PF_FLOAT32_R);
-        App::GetGfxScene()->GetSceneManager()->setShadowTextureConfig(2, 512, 512, PF_FLOAT32_R);
+        App::GetGfxScene()->GetSceneManager()->setShadowTextureConfig(0, 1024, 1024, PF_X8B8G8R8);
+        App::GetGfxScene()->GetSceneManager()->setShadowTextureConfig(1, 1024, 1024, PF_X8B8G8R8);
+        App::GetGfxScene()->GetSceneManager()->setShadowTextureConfig(2, 512, 512, PF_X8B8G8R8);
         PSSM_Shadows.lambda = 0.98f;
     }
 
@@ -187,12 +198,13 @@ void ShadowManager::updatePSSM()
     //Ugh what here?
 }
 
-void ShadowManager::updateTerrainMaterial(Ogre::TerrainPSSMMaterialGenerator::SM2Profile* matProfile)
+void ShadowManager::updateTerrainMaterial(Ogre::TerrainMaterialGeneratorA::SM2Profile* matProfile)
 {
     if (App::gfx_shadow_type->getEnum<GfxShadowType>() == GfxShadowType::PSSM)
     {
         Ogre::PSSMShadowCameraSetup* pssmSetup = static_cast<Ogre::PSSMShadowCameraSetup*>(PSSM_Shadows.mPSSMSetup.get());
-        matProfile->setReceiveDynamicShadowsDepth(true);
+        // OGRE14 TerrainMaterialGeneratorA generates its own shadow
+        // receiver through RTShaderSystem; the old Depth() API is removed.
         // In the graphics preview this can be enabled for the simplified
         // (composite-map) terrain LOD as well. It remains opt-in because
         // sampling three shadow maps on distant terrain is expensive.
@@ -212,6 +224,19 @@ void ShadowManager::setManagedMaterialSplitPoints(Ogre::PSSMShadowCameraSetup::S
     for (int i = 0; i < 4; ++i)
         splitPoints[i] = splitPointList[i];
 
-    GpuSharedParametersPtr p = GpuProgramManager::getSingleton().getSharedParameters("pssm_params");
-    p->setNamedConstant("pssmSplitPoints", splitPoints);
+    // OGRE14 stock terrain uses RTShaderSystem and does not require the
+    // legacy managed-material Cg parameter set. That set exists only if
+    // the optional managed shader scripts were loaded successfully.
+    // Do not crash before a map has loaded just because they are absent.
+    const auto& shared_sets =
+        GpuProgramManager::getSingleton().getAvailableSharedParameters();
+    const auto legacy_params = shared_sets.find("pssm_params");
+    if (legacy_params == shared_sets.end())
+    {
+        Ogre::LogManager::getSingleton().logMessage(
+            "[RoR|OGRE14] Legacy pssm_params unavailable; native RTSS terrain "
+            "shadows remain enabled, but custom managed Cg shadows may not work.");
+        return;
+    }
+    legacy_params->second->setNamedConstant("pssmSplitPoints", splitPoints);
 }

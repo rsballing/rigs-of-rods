@@ -18,6 +18,8 @@
 */
 
 #include "GUI_GameSettings.h"
+#include "Console.h"
+#include "SimConstants.h"
 
 #include "AppContext.h"
 #include "Actor.h"
@@ -206,6 +208,18 @@ void GameSettings::DrawRenderSystemSettings()
 
 void GameSettings::DrawGeneralSettings()
 {
+    CVar* physics_setting = App::GetConsole()->cVarFind("sim_physics_hz");
+    int physics_hz = RoR::ClampPhysicsFrequency(physics_setting->getInt());
+    const int active_physics_hz = static_cast<int>(1.0f / RoR::physics_timestep + 0.5f);
+    if (ImGui::SliderInt("Physics calculation rate", &physics_hz, 2000, 8000, "%d Hz"))
+        physics_setting->setVal(RoR::ClampPhysicsFrequency(physics_hz));
+
+    if (physics_hz != active_physics_hz)
+        ImGui::TextWrapped("Currently running at %d Hz. Restart to apply %d Hz.", active_physics_hz, physics_hz);
+    else
+        ImGui::TextDisabled("Currently running at %d Hz.", active_physics_hz);
+    ImGui::TextWrapped("Default: 2000 Hz. Higher rates require more CPU and may not improve vehicle handling.");
+
     ImGui::TextDisabled("%s", _LC("GameSettings", "Application settings"));
 
 #ifndef NOLANG

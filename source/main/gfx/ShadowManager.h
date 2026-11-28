@@ -31,7 +31,6 @@
 #include "Application.h"
 #include "Application.h"
 
-#include "OgreTerrainPSSMMaterialGenerator.h"
 
 namespace RoR {
 
@@ -59,7 +58,7 @@ public:
 
     void updatePSSM();
 
-    void updateTerrainMaterial(Ogre::TerrainPSSMMaterialGenerator::SM2Profile* matProfile);
+    void updateTerrainMaterial(Ogre::TerrainMaterialGeneratorA::SM2Profile* matProfile);
 
 protected:
 

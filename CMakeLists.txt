@@ -83,6 +83,13 @@ mark_as_advanced(
         LIBRARY_OUTPUT_PATH
 )
 
+# OGRE 14 and MyGUI 3.4.3 use C++17 features (notably std::string_view).
+# Setting this before add_subdirectory() ensures Windows MSVC /std:c++17 and
+# Linux -std=c++17 are propagated to every project target, including the PCH.
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
 if (WIN32)
     add_definitions("/D_CRT_SECURE_NO_WARNINGS /wd4005 /wd4996 /wd4251 /wd4275 /wd4099 /nologo")
 
@@ -109,7 +116,8 @@ if (WIN32)
     SET(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG ${RUNTIME_OUTPUT_DIRECTORY})
 
 ELSEIF (UNIX)
-    set(CMAKE_CXX_FLAGS "-std=c++11 ${CMAKE_CXX_FLAGS}")
+    # Do not override CMAKE_CXX_STANDARD with a conflicting -std=c++11 flag.
+    # CMake selects the required standard for GCC/Clang on each target.
     set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}          -Og -g -Wall")
     set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}        -O2 -ffast-math -DNDEBUG -Wno-deprecated-declarations -Wno-attributes")
     set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -O2 -ffast-math -g -fno-omit-frame-pointer -Wno-deprecated-declarations -Wno-attributes")

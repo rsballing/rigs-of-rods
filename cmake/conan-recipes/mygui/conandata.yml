@@ -1,0 +1,4 @@
+sources:
+  "3.4.3":
+    url: "https://github.com/MyGUI/mygui/archive/refs/tags/MyGUI3.4.3.tar.gz"
+    sha256: "33c91b531993047e77cace36d6fea73634b8c17bd0ed193d4cd12ac7c6328abd"

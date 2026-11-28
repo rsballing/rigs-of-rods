@@ -1,0 +1,28 @@
+name: OGRE 14 migration preflight (not full game)
+
+on:
+  push:
+    branches: [ogre14-migration]
+  workflow_dispatch:
+
+jobs:
+  migration-contract-and-mesh-tests:
+    name: Dependency/source contracts and standalone mesh (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check OGRE 14 integration source invariants
+        run: python tools/CI/Test-Ogre14-Migration.py
+      - name: Configure standalone mesh tests
+        run: cmake -S experimental/renderer-migration -B build/ogre14-preflight -DCMAKE_BUILD_TYPE=Release
+      - name: Build standalone mesh tests
+        run: cmake --build build/ogre14-preflight --config Release --parallel 2
+      - name: Execute tests
+        run: ctest --test-dir build/ogre14-preflight -C Release --output-on-failure
+
+# A passing preflight does not prove OGRE 14 gameplay or shaders compile.
+# The separate Build game workflow must build RoR.exe, followed by GPU tests.

@@ -33,6 +33,8 @@
 
 #include "scriptarray/scriptarray.h"
 
+#include <cstdint>
+#include <cstring>
 #include <OgreRenderOperation.h>
 
 #include <Overlay/OgreOverlaySystem.h>
@@ -1032,18 +1034,35 @@ static AngelScript::CScriptArray* get2DElementsHelper(Ogre::Overlay* self)
     catch (...) { App::GetScriptEngine()->forwardExceptionAsScriptEvent("Ogre::Overlay::get2DElements()"); return (CScriptArray*)nullptr; }
 }
 
+// Keep the legacy script API available with OGRE 14.
+static void SceneNodeHideBoundingBox(Ogre::SceneNode* self, bool hide)
+{
+    self->showBoundingBox(!hide);
+}
+static bool ScalarIsNaN(float value)
+{
+    // Bit inspection also works when OGRE is configured with fast math.
+    uint32_t bits;
+    static_assert(sizeof(bits) == sizeof(value), "32-bit float required");
+    std::memcpy(&bits, &value, sizeof(bits));
+    return (bits & 0x7fffffffU) > 0x7f800000U;
+}
+static bool Vector2IsNaN(const Ogre::Vector2* self)
+{ return ScalarIsNaN(self->x) || ScalarIsNaN(self->y); }
+static bool Vector3IsNaN(const Ogre::Vector3* self)
+{ return ScalarIsNaN(self->x) || ScalarIsNaN(self->y) || ScalarIsNaN(self->z); }
+static bool QuaternionIsNaN(const Ogre::Quaternion* self)
+{ return ScalarIsNaN(self->w) || ScalarIsNaN(self->x) || ScalarIsNaN(self->y) || ScalarIsNaN(self->z); }
+
 /***OVERLAYMANAGER***/
 static AngelScript::CScriptArray* getElementTemplatesHelper(Ogre::OverlayManager* self)
 {
     try {
-        auto iterable = self->getTemplateIterator();
+        // OGRE 14 merged templates into ordinary elements and removed template enumeration.
         // we must cast on the go (unlike get2DElements() this actually returns list of Ogre::OverlayElement*), see ATTENTION! below.
         AngelScript::asITypeInfo* typeinfo = App::GetScriptEngine()->getEngine()->GetTypeInfoByDecl("array<Ogre::OverlayElement@>");
         AngelScript::CScriptArray* arr = AngelScript::CScriptArray::Create(typeinfo);
-        for (auto& elem_pair: iterable) {
-            OverlayElement* elem = static_cast<Ogre::OverlayElement*>(elem_pair.second);
-            arr->InsertLast(&elem);  // TORN HAIR HERE!! Don't forget to pass ref-types as pointer-to-pointer!!
-        }
+
         return arr; }
     catch (...) { App::GetScriptEngine()->forwardExceptionAsScriptEvent("Ogre::OverlayManager::getTemplates()"); return (CScriptArray*)nullptr; }
 }
@@ -1130,7 +1149,7 @@ static Ogre::OverlayElement* OverlayManagerCloneOverlayElementFromTemplate(Ogre:
 
 static bool OverlayManagerIsTemplate(Ogre::OverlayManager* self, const std::string& name)
 {
-    try {return self->isTemplate(name);}
+    try {return self->hasOverlayElement(name);}
     catch(...) {App::GetScriptEngine()->forwardExceptionAsScriptEvent("Ogre::OverlayManager::isTemplate()"); return false;}
 }
 

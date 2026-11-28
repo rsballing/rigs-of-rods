@@ -1,0 +1,250 @@
+name: OGRE 14 Windows game compilation
+
+# Full Windows game compile; source-contract checks are separate.
+on:
+  push:
+    branches: [ogre14-migration]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows-game:
+    name: Windows x64 RoR.exe (OGRE14)
+    runs-on: windows-2025
+    timeout-minutes: 120
+    env:
+      BUILD_TOOLS_PATH: C:\apps\build-tools\
+      CONAN_USER_HOME_SHORT: None
+    steps:
+      - name: Add Rigs of Rods build tools to PATH
+        shell: pwsh
+        run: '$env:BUILD_TOOLS_PATH | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append'
+      - uses: actions/checkout@v7
+        with:
+          submodules: true
+
+      - name: Validate Windows packaging script syntax
+        shell: pwsh
+        run: |
+          Get-ChildItem tools/windows/*.ps1 | ForEach-Object {
+            $tokens = $null
+            $parseErrors = $null
+            [void][System.Management.Automation.Language.Parser]::ParseFile($_.FullName, [ref]$tokens, [ref]$parseErrors)
+            if ($parseErrors.Count -gt 0) { throw ($parseErrors | Out-String) }
+          }
+
+      - name: Install Rigs of Rods build environment
+        shell: cmd
+        run: git clone https://git.anotherfoxguy.com/AnotherFoxGuy/build-tools.git %BUILD_TOOLS_PATH%
+
+      - name: Restore Conan dependency cache
+        id: conan_cache
+        uses: actions/cache/restore@v6
+        with:
+          key: ogre14-conan-win-${{ hashFiles('conanfile.py', 'cmake/conan-recipes/mygui/conanfile.py') }}
+          path: ~/.conan2/
+
+      - uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Detect compiler and resolve public Conan remote
+        shell: pwsh
+        run: |
+          conan profile detect --force
+          conan remote add rigs-of-rods-deps https://conan.cloudsmith.io/rigs-of-rods/deps/ -f
+          conan remote list
+          cmake --version
+          conan --version
+
+      - name: Export patched MyGUI 3.4.3 Conan recipe
+        shell: pwsh
+        run: |
+          conan export cmake/conan-recipes/mygui --user=anotherfoxguy --channel=stable
+          if ($LASTEXITCODE -ne 0) { throw "MyGUI Conan recipe export failed" }
+
+      # Caelum 2022.08 uses std::bind1st/std::mem_fun, removed in C++17.
+      # MSVC's compatibility macro restores those interfaces in dependency builds.
+      - name: Enable legacy STL compatibility for Caelum
+        shell: pwsh
+        run: |
+          "CL=/D_HAS_AUTO_PTR_ETC=1" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Configure Windows OGRE 14 game
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          # Use an absolute, quoted provider path. On Windows, the unquoted
+          # relative -D argument was split, leaving CMake looking for a
+          # non-existent module named "cmake/conan_provider" and a stray ".cmake".
+          $provider = (Resolve-Path 'cmake/conan_provider.cmake').Path
+          if (-not (Test-Path -LiteralPath $provider -PathType Leaf)) {
+            throw "Missing Conan CMake dependency provider: $provider"
+          }
+          $cmakeArgs = @(
+            '-S', '.',
+            '-B', 'build',
+            '-G', 'Ninja',
+            '-DCMAKE_BUILD_TYPE=Release',
+            "-DCMAKE_PROJECT_TOP_LEVEL_INCLUDES=$provider",
+            '-DCMAKE_INSTALL_PREFIX=redist',
+            '-DROR_CREATE_CONTENT_FOLDER=ON'
+          )
+          Write-Host "Using Conan CMake provider: $provider"
+          & cmake @cmakeArgs *> ogre14-configure.log
+          $code = $LASTEXITCODE
+          Get-Content ogre14-configure.log -Tail 160
+          if ($code -ne 0) {
+            Write-Host '=== Configure/Conan compiler errors (not merely final warnings) ==='
+            $errors = Select-String -Path 'ogre14-configure.log' -Pattern 'fatal error|error C[0-9]{4}|error LNK[0-9]{4}|: error:|FAILED:|ConanException|ERROR:|CMake Error'
+            if ($errors) {
+              $errors | Select-Object -First 110 | ForEach-Object { Write-Host $_.Line }
+            }
+            throw "OGRE14 configure failed (exit $code)"
+          }
+
+      # Conan/OGRE dependency builds are expensive. Save the package cache as
+      # soon as configuration finishes, even if game compilation subsequently
+      # fails, so subsequent API-fix iterations do not rebuild OGRE/MyGUI.
+      - name: Save Conan packages after configure
+        if: always() && steps.conan_cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          key: ogre14-conan-win-${{ hashFiles('conanfile.py', 'cmake/conan-recipes/mygui/conanfile.py') }}
+          path: ~/.conan2/
+
+      - name: Compile and install Windows OGRE 14 game
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          # Keep compiling independent targets after the first error so one
+          # long Windows run reveals several migration problems, not just one.
+          # -k 25 is a Ninja-specific bounded keep-going limit.
+          & cmake --build build --target install --parallel 2 -- -k 25 *> ogre14-build.log
+          $code = $LASTEXITCODE
+          Get-Content ogre14-build.log -Tail 180
+          if ($code -ne 0) {
+            $errors = Select-String -Path 'ogre14-build.log' -Pattern 'fatal error|error C[0-9]{4}|error LNK[0-9]{4}|: error:|FAILED:|undefined reference|ninja: build stopped'
+            if ($errors) {
+              Write-Host '=== First compiler/linker diagnostics (see artifact for full log) ==='
+              $errors | Select-Object -First 90 | ForEach-Object { Write-Host $_.Line }
+            }
+            throw "OGRE14 compilation failed (exit $code)"
+          }
+
+      - name: Bundle signed Microsoft DirectX runtime DLLs
+        shell: pwsh
+        run: ./tools/windows/Add-LegacyDirectX.ps1 -DestinationDirectory './redist'
+
+      - name: Verify built game and modern shader assets
+        shell: pwsh
+        run: |
+          if (-not (Test-Path 'redist/RoR.exe' -PathType Leaf)) {
+            throw "OGRE14 build did not install RoR.exe"
+          }
+          ./tools/windows/Test-RoRWindowsPackage.ps1 -Directory './redist'
+          ./tools/windows/Test-RendererPlugins.ps1 -DistributionDirectory './redist'
+
+      - name: Compile legacy managed-material Cg shader entry points
+        shell: pwsh
+        run: |
+          python ./tools/windows/Test-CgShaders.py ./redist
+          if ($LASTEXITCODE -ne 0) { throw "Legacy vehicle PSSM shaders cannot compile under OGRE14" }
+
+      - name: Confirm RoR.exe loads all its static DLL imports
+        shell: pwsh
+        run: |
+          $exe = (Resolve-Path 'redist/RoR.exe').Path
+          $wd = (Resolve-Path 'redist').Path
+          $process = Start-Process -FilePath $exe -ArgumentList '--ci-load-check' -WorkingDirectory $wd -Wait -PassThru
+          if ($process.ExitCode -ne 0) { throw "OGRE14 RoR.exe DLL load check failed: exit $($process.ExitCode)" }
+
+      # A DLL load check is not enough: validate initialization of OGRE,
+      # material scripts and the main menu on the hosted Windows runner too.
+      # The runner's virtual GPU may differ from a user's physical graphics card.
+      - name: Diagnostic renderer startup smoke test (virtual GPU)
+        shell: pwsh
+        continue-on-error: true
+        timeout-minutes: 3
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $wd = (Resolve-Path './redist').Path
+          # Presence of this folder enables RoR's portable-user-data mode,
+          # keeping the diagnostic log in the Actions artifact.
+          $portableDir = Join-Path $wd 'config'
+          if (-not (Test-Path -LiteralPath $portableDir)) {
+            New-Item -Path $portableDir -ItemType Directory -Force | Out-Null
+            New-Item -Path (Join-Path $wd '.ci-portable-config-marker') -ItemType File -Force | Out-Null
+          }
+          $exe = Join-Path $wd 'RoR.exe'
+          $logPath = Join-Path $wd 'config/logs/RoR.log'
+          $proc = Start-Process -FilePath $exe -WorkingDirectory $wd -PassThru
+          $exitCode = $null
+          try {
+            if ($proc.WaitForExit(25000)) {
+              $exitCode = $proc.ExitCode
+              Write-Host "RoR.exe terminated during smoke test with code $exitCode"
+            } else {
+              Write-Host 'RoR.exe remains running after 25 seconds; closing diagnostic instance.'
+            }
+          }
+          finally {
+            $proc.Refresh()
+            if (-not $proc.HasExited) {
+              Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
+            }
+          }
+          if (Test-Path -LiteralPath $logPath) {
+            Write-Host '=== RoR.log final 120 lines ==='
+            Get-Content -LiteralPath $logPath -Tail 120
+            $errors = Select-String -LiteralPath $logPath -Pattern 'Parameter called worldViewProj does not exist|InvalidParametersException|Failed to compile|Compile error|ERROR:'
+            if ($errors) {
+              Write-Host '=== Rendering errors ==='
+              $errors | Select-Object -Last 20 | ForEach-Object { Write-Host $_.Line }
+              throw 'GPU startup diagnostic found shader errors; see uploaded RoR.log'
+            }
+          } else {
+            Write-Host 'No RoR.log was produced by the Windows virtual GPU startup test.'
+          }
+          if ($null -ne $exitCode -and $exitCode -ne 0) {
+            throw "RoR.exe did not complete startup successfully (exit $exitCode)."
+          }
+          Write-Host 'Smoke test completed without a detected shader error; real GPU verification is still required.'
+
+      - name: Preserve startup log without packaging CI-only config
+        if: always()
+        shell: pwsh
+        run: |
+          $diag = './ogre14-smoke-diagnostics'
+          New-Item -Path $diag -ItemType Directory -Force | Out-Null
+          if (Test-Path './redist/config/logs/RoR.log') {
+            Copy-Item './redist/config/logs/RoR.log' (Join-Path $diag 'RoR.log') -Force
+          }
+          if (Test-Path './redist/.ci-portable-config-marker') {
+            Remove-Item './redist/config' -Recurse -Force -ErrorAction SilentlyContinue
+            Remove-Item './redist/.ci-portable-config-marker' -Force -ErrorAction SilentlyContinue
+          }
+
+      - name: Upload diagnostic logs even if compilation fails
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ogre14-compile-diagnostics
+          if-no-files-found: warn
+          retention-days: 14
+          path: |
+            ogre14-configure.log
+            ogre14-build.log
+            build/CMakeFiles/CMakeConfigureLog.yaml
+            build/CMakeFiles/CMakeError.log
+            build/CMakeFiles/CMakeOutput.log
+            ogre14-smoke-diagnostics/RoR.log
+
+      - name: Upload testable Windows game only after full build and DLL validation
+        uses: actions/upload-artifact@v7
+        with:
+          name: ror-ogre14-windows-unverified-gpu
+          path: redist/
+          retention-days: 14
+
+# A build artifact does not establish correct GPU shadows or collision visuals.

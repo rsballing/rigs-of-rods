@@ -79,6 +79,9 @@ void GfxScene::ClearScene()
     // Recover from the wipe
     App::GetCameraManager()->ReCreateCameraNode();
     App::GetGuiManager()->DirectionArrow.CreateArrow();
+    // Cubemap camera scene nodes are destroyed by clearScene() as well.
+    // Reattach the six probe cameras before their next reflection update.
+    this->GetEnvMap().CreateSceneNodes();
     m_gfx_freebeams_grouping_node = m_scene_manager->getRootSceneNode()->createChildSceneNode("FreeBeam Visuals");
 }
 

@@ -264,10 +264,15 @@ void BatchPage::_updateShaders()
         HighLevelGpuProgramManager& mgr = HighLevelGpuProgramManager::getSingleton();
 
 		String shaderLanguage;
-		if (mgr.isLanguageSupported("hlsl"))
-			shaderLanguage = "hlsl";
-		else if(mgr.isLanguageSupported("glsl"))
+		// Select shader language for the renderer currently in use, not
+		// just whichever language factory was registered first.
+		const Ogre::String rendererName = Root::getSingleton().getRenderSystem()->getName();
+		if (rendererName.find("OpenGL") != Ogre::String::npos &&
+			mgr.isLanguageSupported("glsl"))
 			shaderLanguage = "glsl";
+		else if (rendererName.find("Direct3D") != Ogre::String::npos &&
+			mgr.isLanguageSupported("hlsl"))
+			shaderLanguage = "hlsl";
 		else
 			shaderLanguage = "cg";
 
@@ -463,6 +468,21 @@ void BatchPage::_updateShaders()
 			// GLSL can only have one entry point "main".
 
 			vertexShader->load();
+		}
+
+		// Some legacy PagedGeometry shader sources cannot compile on OGRE 14
+		// renderers (notably modern Direct3D). Without a valid uniform list,
+		// binding worldViewProj throws and aborts loading the entire terrain.
+		// Keep the unfaded base batch material when this generated shader fails.
+		HighLevelGpuProgramPtr checkedShader = Ogre::static_pointer_cast<HighLevelGpuProgram>(
+			HighLevelGpuProgramManager::getSingleton().getByName(vertexProgName));
+		if (!checkedShader || !checkedShader->isSupported() ||
+			!checkedShader->getDefaultParameters()->_findNamedConstantDefinition("worldViewProj", false))
+		{
+			LogManager::getSingleton().logMessage(
+				"[RoR|PagedGeometry] BatchPage shader '" + vertexProgName +
+				"' has no usable worldViewProj parameter; preserving original material.");
+			continue;
 		}
 
 		//Now that the shader is ready to be applied, apply it

@@ -35,16 +35,235 @@
 #include "TObjFileFormat.h"
 #include "PlatformUtils.h"
 
+#include <algorithm>
+#include <exception>
+
 using namespace RoR;
 using namespace Ogre;
 
 const TerrainEditorObjectPtr TerrainEditor::TERRAINEDITOROBJECTPTR_NULL; // Dummy value to be returned as const reference.
 
+// The original keyboard-driven editor is retained; this panel adds a
+// discoverable object list and transform inspector without replacing RoR UI.
+void TerrainEditor::DrawEditorPanel()
+{
+    const TerrainPtr& terrain = App::GetGameContext()->GetTerrain();
+    if (!terrain)
+        return;
+
+    TerrainObjectManager* manager = terrain->getObjectManager();
+    auto& objects = manager->GetEditorObjects();
+    const ImVec2 display = ImGui::GetIO().DisplaySize;
+    const float panelWidth = std::max(260.f, std::min(410.f, display.x - 24.f));
+    const float panelHeight = std::max(220.f, std::min(610.f, display.y - 40.f));
+    ImGui::SetNextWindowPos(ImVec2(std::max(8.f, display.x - panelWidth - 14.f), 24.f),
+                            ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(panelWidth, panelHeight), ImGuiCond_FirstUseEver);
+
+    bool open = true;
+    if (ImGui::Begin("Terrain editor", &open, ImGuiWindowFlags_NoCollapse))
+    {
+        if (ImGui::Button("Play mode"))
+            App::GetGameContext()->PushMessage(MSG_EDI_LEAVE_TERRN_EDITOR_REQUESTED);
+        ImGui::SameLine();
+        if (ImGui::Button("Save changes"))
+        {
+            if (terrain->getCacheEntry()->resource_bundle_type == "FileSystem")
+                App::GetGameContext()->PushMessage(MSG_EDI_SAVE_TERRN_CHANGES_REQUESTED);
+            else
+                this->WriteSeparateOutputFile();
+        }
+        ImGui::Separator();
+        const bool editableProject = terrain->getCacheEntry()->resource_bundle_type == "FileSystem";
+        if (!editableProject)
+            ImGui::TextWrapped("ZIP terrain: changes are exported to logs/editor_out.log; the original map cannot be overwritten.");
+        else
+            ImGui::TextDisabled("Project terrain: Save writes the original .tobj placement files.");
+
+        ImGui::Text("Scene objects (%d)", static_cast<int>(objects.size()));
+        ImGui::InputText("Search objects", m_filter, sizeof(m_filter));
+        ImGui::BeginChild("TerrainObjectList", ImVec2(0.f, 150.f), true);
+        {
+            for (int i = 0; i < static_cast<int>(objects.size()); ++i)
+            {
+                const TerrainEditorObjectPtr& item = objects[i];
+                const std::string label = item->name + (item->instance_name.empty() ? "" : "  /  " + item->instance_name);
+                if (m_filter[0] != '\0' && label.find(m_filter) == std::string::npos)
+                    continue;
+                ImGui::PushID(i);
+                if (ImGui::Selectable(label.c_str(), m_selected_object_id == i))
+                    this->SetSelectedObjectByID(i);
+                ImGui::PopID();
+            }
+        }
+        ImGui::EndChild();
+
+        if (ImGui::Checkbox("Follow selected object with character", &m_object_tracking) && m_object_tracking)
+        {
+            const TerrainEditorObjectPtr& tracked = this->FetchSelectedObject();
+            if (tracked != TERRAINEDITOROBJECTPTR_NULL)
+                App::GetGameContext()->GetPlayerCharacter()->setPosition(tracked->position);
+        }
+        TerrainEditorObjectPtr selected = this->FetchSelectedObject();
+        if (selected != TERRAINEDITOROBJECTPTR_NULL)
+        {
+            ImGui::Separator();
+            ImGui::Text("Selected: %s", selected->name.c_str());
+            if (!selected->instance_name.empty())
+                ImGui::TextDisabled("%s", selected->instance_name.c_str());
+
+            float position[3] = {selected->position.x, selected->position.y, selected->position.z};
+            if (ImGui::DragFloat3("Move (m)", position, 0.20f))
+            {
+                m_object_tracking = false;
+                selected->setPosition(Ogre::Vector3(position[0], position[1], position[2]));
+            }
+            float rotation[3] = {selected->rotation.x, selected->rotation.y, selected->rotation.z};
+            if (ImGui::DragFloat3("Rotate (degrees)", rotation, 0.5f))
+            {
+                m_object_tracking = false;
+                selected->setRotation(Ogre::Vector3(rotation[0], rotation[1], rotation[2]));
+            }
+
+            // The TOBJ format stores placement and rotation, not per-instance
+            // scale. Expose scale as an explicitly temporary visual preview.
+            if (selected->static_object_node != nullptr)
+            {
+                const Ogre::Vector3 size = selected->static_object_node->getScale();
+                float scale[3] = {size.x, size.y, size.z};
+                if (ImGui::DragFloat3("Size (preview only)", scale, 0.05f, 0.01f, 100.f))
+                {
+                    m_object_tracking = false;
+                    selected->static_object_node->setScale(
+                        Ogre::Vector3(scale[0], scale[1], scale[2]));
+                }
+                ImGui::TextDisabled("Size is NOT stored in .tobj; edit the .odef scale to keep it.");
+                if (ImGui::Button("Reset size preview"))
+                    selected->static_object_node->setScale(selected->initial_scale);
+            }
+
+            if (ImGui::Button("Reset position / rotation"))
+            {
+                m_object_tracking = false;
+                selected->setPosition(selected->initial_position);
+                selected->setRotation(selected->initial_rotation);
+            }
+            ImGui::TextDisabled("Collision geometry may need a terrain reload after moving objects.");
+            ImGui::TextDisabled("ODEF colliders: %d boxes, %d triangle entries",
+                static_cast<int>(selected->static_collision_boxes.size()),
+                static_cast<int>(selected->static_collision_tris.size()));
+
+            if (selected->special_object_type == TObjSpecialObject::NONE)
+            {
+                if (ImGui::Button("Duplicate object"))
+                {
+                    std::string uniqueName;
+                    int suffix = static_cast<int>(objects.size());
+                    do
+                    {
+                        uniqueName = fmt::format("editor_copy_{}", suffix++);
+                    }
+                    while (manager->FindEditorObjectByInstanceName(uniqueName) != TERRAINEDITOROBJECTID_INVALID);
+                    const Ogre::Vector3 copyPos = selected->position + Ogre::Vector3(2.f, 0.f, 2.f);
+                    if (manager->LoadTerrainObject(selected->name, copyPos, selected->rotation,
+                                                   uniqueName, selected->type,
+                                                   0.f, selected->enable_collisions))
+                    {
+                        objects.back()->tobj_cache_id = selected->tobj_cache_id;
+                        m_object_tracking = false;
+                        this->SetSelectedObjectByID(static_cast<int>(objects.size()) - 1);
+                    }
+                }
+                const bool safeToDelete =
+                    !selected->instance_name.empty() &&
+                    manager->FindEditorObjectByInstanceName(selected->instance_name) == m_selected_object_id;
+                if (safeToDelete)
+                {
+                    ImGui::SameLine();
+                    if (ImGui::Button("Delete..."))
+                        ImGui::OpenPopup("Delete selected terrain object?");
+                }
+                if (ImGui::BeginPopupModal("Delete selected terrain object?", nullptr,
+                                          ImGuiWindowFlags_AlwaysAutoResize))
+                {
+                    ImGui::TextWrapped("Remove this object from the scene? Save changes to update the .tobj file.");
+                    if (ImGui::Button("Delete object"))
+                    {
+                        const std::string instance = selected->instance_name;
+                        manager->destroyObject(instance);
+                        this->ClearSelectedObject();
+                        ImGui::CloseCurrentPopup();
+                    }
+                    ImGui::SameLine();
+                    if (ImGui::Button("Cancel"))
+                        ImGui::CloseCurrentPopup();
+                    ImGui::EndPopup();
+                }
+            }
+        }
+        else
+        {
+            ImGui::TextDisabled("Select an object above or middle-click an object in the scene.");
+        }
+
+        ImGui::Separator();
+        ImGui::Text("Place existing .odef object");
+        ImGui::InputText("ODEF name", m_new_odef_name, sizeof(m_new_odef_name));
+        ImGui::SameLine();
+        if (ImGui::Button("Place") && m_new_odef_name[0] != '\0')
+        {
+            std::string uniqueName;
+            int suffix = static_cast<int>(objects.size());
+            do
+            {
+                uniqueName = fmt::format("editor_object_{}", suffix++);
+            }
+            while (manager->FindEditorObjectByInstanceName(uniqueName) != TERRAINEDITOROBJECTID_INVALID);
+            const int targetTobj = (selected != TERRAINEDITOROBJECTPTR_NULL &&
+                                    selected->tobj_cache_id >= 0)
+                                        ? selected->tobj_cache_id
+                                        : (manager->GetTobjCache().empty() ? -1 : 0);
+            const Ogre::Vector3 placePos = selected != TERRAINEDITOROBJECTPTR_NULL
+                ? selected->position + Ogre::Vector3(2.f, 0.f, 2.f)
+                : App::GetGameContext()->GetPlayerCharacter()->getPosition() + Ogre::Vector3(0.f, 0.f, 5.f);
+            try
+            {
+                if (manager->LoadTerrainObject(m_new_odef_name, placePos, Ogre::Vector3::ZERO,
+                                               uniqueName, "-"))
+                {
+                    objects.back()->tobj_cache_id = targetTobj;
+                    m_object_tracking = false;
+                    this->SetSelectedObjectByID(static_cast<int>(objects.size()) - 1);
+                    m_new_odef_name[0] = '\0';
+                }
+            }
+            catch (const std::exception& ex)
+            {
+                App::GetConsole()->putMessage(Console::CONSOLE_MSGTYPE_TERRN,
+                                              Console::CONSOLE_SYSTEM_ERROR, ex.what());
+            }
+        }
+        ImGui::TextDisabled("Use an existing RoR .odef asset; OBJ/GLB import is not implemented.");
+        ImGui::TextDisabled("Middle-click: select | Ctrl+Y: edit/play | Save: write project");
+    }
+    ImGui::End();
+    if (!open)
+        App::GetGameContext()->PushMessage(MSG_EDI_LEAVE_TERRN_EDITOR_REQUESTED);
+}
+
 void TerrainEditor::UpdateInputEvents(float dt)
 {
+    // Do not let editing text fields/sliders also move a selected object.
+    if (ImGui::GetIO().WantCaptureKeyboard || ImGui::IsAnyItemActive())
+    {
+        if (App::GetInputEngine()->getEventBoolValueBounce(EV_COMMON_TOGGLE_TERRAIN_EDITOR))
+            App::GetGameContext()->PushMessage(MSG_EDI_LEAVE_TERRN_EDITOR_REQUESTED);
+        return;
+    }
+
     auto& object_list = App::GetGameContext()->GetTerrain()->getObjectManager()->GetEditorObjects();
 
-    if (ImGui::IsMouseClicked(2)) // Middle button
+    if (!ImGui::GetIO().WantCaptureMouse && ImGui::IsMouseClicked(2)) // Middle button
     {
         ImVec2 mouse_screen = ImGui::GetIO().MousePos / ImGui::GetIO().DisplaySize;
         Ogre::Ray terrain_editor_mouse_ray = App::GetCameraManager()->GetCamera()->getCameraToViewportRay(mouse_screen.x, mouse_screen.y);

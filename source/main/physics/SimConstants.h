@@ -17,7 +17,12 @@
 
 #pragma once
 
-#define PHYSICS_DT 0.0005f // fixed dt of 0.5 ms
+namespace RoR {
+// Set once during startup, before any simulation workers are started.
+inline float physics_timestep = 0.0005f;
+inline int ClampPhysicsFrequency(int hz) { return hz < 2000 ? 2000 : (hz > 8000 ? 8000 : hz); }
+}
+#define PHYSICS_DT (::RoR::physics_timestep)
 
 /* maximum limits */
 static const int   MAX_ACTORS                 = 5000;            //!< maximum number of actors per game session

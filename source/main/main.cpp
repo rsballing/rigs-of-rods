@@ -27,6 +27,7 @@
 #include "ChatSystem.h"
 #include "Collisions.h"
 #include "Console.h"
+#include "SimConstants.h"
 #include "ContentManager.h"
 #include "DashBoardManager.h"
 #include "DiscordRpc.h"
@@ -59,6 +60,10 @@
 #include "Terrain.h"
 #include "Utils.h"
 #include <Overlay/OgreOverlaySystem.h>
+#include <RTShaderSystem/OgreRTShaderSystem.h>
+#ifdef USE_CAELUM
+#include <Caelum.h>
+#endif
 #include <ctime>
 #include <iomanip>
 #include <string>
@@ -120,6 +125,10 @@ int main(int argc, char *argv[])
 
         // Load RoR.cfg - updates cvars
         App::GetConsole()->loadConfig();
+        CVar* physics_hz = App::GetConsole()->cVarFind("sim_physics_hz");
+        const int startup_hz = RoR::ClampPhysicsFrequency(physics_hz->getInt());
+        physics_hz->setVal(startup_hz);
+        RoR::physics_timestep = 1.0f / startup_hz;
 
         // Process command line params - updates 'cli_*' cvars
         App::GetConsole()->processCommandLine(argc, argv);
@@ -149,6 +158,13 @@ int main(int argc, char *argv[])
         {
             return -1; // Error already displayed
         }
+
+#ifdef USE_CAELUM
+        // OGRE14-compatible Caelum is linked as a library, not dynamically
+        // loaded from plugins.cfg. Register it before resource initialization.
+        new Caelum::CaelumPlugin();
+        Caelum::CaelumPlugin::getSingleton().initialise();
+#endif
 
         Ogre::TextureManager::getSingleton().setDefaultNumMipmaps(5);
 
@@ -187,6 +203,13 @@ int main(int argc, char *argv[])
         App::GetContentManager()->AddResourcePack(ContentManager::ResourcePack::FONTS);
         App::GetContentManager()->AddResourcePack(ContentManager::ResourcePack::ICONS);
         App::GetContentManager()->AddResourcePack(ContentManager::ResourcePack::OGRE_CORE);
+        // OGRE 14's RTShaderSystem needs FFPLib/SGX shaders, including
+        // SGXLib_IntegratedPSSM and normal mapping, available at startup.
+        // Register with General so generated programs can resolve the
+        // shader-library dependencies from their default resource group.
+        App::GetContentManager()->AddResourcePack(
+            ContentManager::ResourcePack::RTSHADER,
+            Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
         App::GetContentManager()->AddResourcePack(ContentManager::ResourcePack::WALLPAPERS);
         App::GetContentManager()->AddResourcePack(ContentManager::ResourcePack::SCRIPTS);
 
@@ -202,6 +225,20 @@ int main(int argc, char *argv[])
         App::GetGfxScene()->GetSceneManager()->addRenderQueueListener(overlay_system);
         App::CreateCameraManager(); // Creates OGRE Camera
         App::GetGfxScene()->GetEnvMap().SetupEnvMap(); // Needs camera
+
+        // OGRE 14 TerrainMaterialGeneratorA creates its terrain programs via
+        // RTShaderSystem. Initialize this *after* the render system and main
+        // SceneManager exist, and *before* we load any terrain or materials.
+        if (!Ogre::RTShader::ShaderGenerator::initialize())
+        {
+            ErrorUtils::ShowError(_L("Startup error"),
+                                  _L("Failed to initialize OGRE 14 terrain shaders"));
+            return -1;
+        }
+        Ogre::RTShader::ShaderGenerator* shader_gen =
+            Ogre::RTShader::ShaderGenerator::getSingletonPtr();
+        shader_gen->setShaderCachePath(App::sys_cache_dir->getStr());
+        shader_gen->addSceneManager(App::GetGfxScene()->GetSceneManager());
 
         App::CreateGuiManager(); // Needs scene manager
 
@@ -1085,6 +1122,9 @@ int main(int argc, char *argv[])
                             App::GetDiscordRpc()->UpdatePresence();
                             App::sim_state->setVal((int)SimState::RUNNING);
                             App::app_state->setVal((int)AppState::SIMULATION);
+                            // Enter editor mode after the terrain picker finishes loading.
+                            if (App::GetGuiManager()->GameMainMenu.ConsumeOpenEditorOnLoad())
+                                App::GetGameContext()->PushMessage(MSG_EDI_ENTER_TERRN_EDITOR_REQUESTED);
                             App::GetGuiManager()->GameMainMenu .SetVisible(false);
                             App::GetGuiManager()->MenuWallpaper->hide();
                             App::GetGuiManager()->LoadingWindow.SetVisible(false);

@@ -74,7 +74,6 @@ set(SOURCE_FILES
         gfx/particle/ExtinguishableFireAffectorFactory.h
         gfx/particle/FireExtinguisherAffector.{h,cpp}
         gfx/particle/FireExtinguisherAffectorFactory.h
-        gfx/particle/OgreParticleCustomParam.h
         gfx/particle/OgreShaderParticleRenderer.{h,cpp}
         gfx/skyx/AtmosphereManager.{h,cpp}
         gfx/skyx/BasicController.{h,cpp}
@@ -200,7 +199,8 @@ set(SOURCE_FILES
         system/Console.{h,cpp}
         system/ConsoleCmd.{h,cpp}
         system/CVar.{h,cpp}
-        terrain/OgreTerrainPSSMMaterialGenerator.{h,cpp}
+        # OGRE14: use the upstream TerrainMaterialGeneratorA implementation;
+        # the custom OGRE1.11 material generator is retained only in the fallback branch.
         terrain/ProceduralManager.{h,cpp}
         terrain/ProceduralRoad.{h,cpp}
         terrain/SurveyMapEntity.h
@@ -348,6 +348,9 @@ endif ()
 ####################################################################################################
 set(BINNAME "RoR")
 add_executable(${BINNAME} ${SOURCE_FILES})
+# Fail configuration on compilers that cannot provide the standard required
+# by OGRE 14 and MyGUI 3.4.3, before a long dependency-heavy build runs.
+target_compile_features(${BINNAME} PRIVATE cxx_std_17)
 
 if (WIN32)
     set_target_properties(${BINNAME} PROPERTIES WIN32_EXECUTABLE YES)

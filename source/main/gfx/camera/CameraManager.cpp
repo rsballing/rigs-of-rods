@@ -116,7 +116,10 @@ CameraManager::CameraManager() :
     m_staticcam_update_timer.reset();
 
     m_camera = App::GetGfxScene()->GetSceneManager()->createCamera("PlayerCam");
-    m_camera->setNearClipDistance(0.5);
+    // OGRE14: use finite camera clipping to prevent infinite-far
+    // projection artifacts in Hydrax, SkyX and reflection render targets.
+    m_camera->setNearClipDistance(0.01f);
+    m_camera->setFarClipDistance(100000.0f);
     m_camera->setAutoAspectRatio(true);
     this->CreateCameraNode();
 

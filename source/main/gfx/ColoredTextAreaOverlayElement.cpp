@@ -42,13 +42,15 @@ ColoredTextAreaOverlayElement::~ColoredTextAreaOverlayElement(void)
 void ColoredTextAreaOverlayElement::setValueBottom(float Value)
 {
     m_ValueTop = Value;
-    mColoursChanged = true;
+    // Mark OGRE's private colour state dirty through its public setter.
+    TextAreaOverlayElement::setColourTop(getColourTop());
 }
 
 void ColoredTextAreaOverlayElement::setValueTop(float Value)
 {
     m_ValueBottom = Value;
-    mColoursChanged = true;
+    // Mark OGRE's private colour state dirty through its public setter.
+    TextAreaOverlayElement::setColourTop(getColourTop());
 }
 
 ColourValue ColoredTextAreaOverlayElement::GetColor(unsigned char ID, float Value)
@@ -130,19 +132,26 @@ void ColoredTextAreaOverlayElement::setCaption(const DisplayString& text)
             fill(m_Colors.begin() + i - (2 * iNumColorCodes) - iNumSpaces, m_Colors.end(), text[i + 1] - '0');
             ++i;
             ++iNumColorCodes;
-            mColoursChanged = true;
+            // Mark OGRE's private colour state dirty through its public setter.
+    TextAreaOverlayElement::setColourTop(getColourTop());
             noColor = false;
         }
     }
     if (noColor)
-        mColoursChanged = true;
+        // Mark OGRE's private colour state dirty through its public setter.
+    TextAreaOverlayElement::setColourTop(getColourTop());
     // Set the caption using the base class, but strip the color codes from it first
     TextAreaOverlayElement::setCaption(StripColors(text));
 }
 
 void ColoredTextAreaOverlayElement::updateColours(void)
 {
-    if (!mRenderOp.vertexData)
+    // OGRE 14 made TextAreaOverlayElement's render operation private.
+    // Use the public Renderable accessor rather than depending on internal
+    // memory layout. The returned operation shares the underlying buffers.
+    RenderOperation renderOp;
+    getRenderOperation(renderOp);
+    if (!renderOp.vertexData)
         return;
     // Convert to system-specific
     RGBA topColour, bottomColour;
@@ -151,14 +160,16 @@ void ColoredTextAreaOverlayElement::updateColours(void)
     Root::getSingleton().convertColourValue(ColourValue::White, &bottomColour);
 
     HardwareVertexBufferSharedPtr vbuf =
-        mRenderOp.vertexData->vertexBufferBinding->getBuffer(COLOUR_BINDING);
+        renderOp.vertexData->vertexBufferBinding->getBuffer(COLOUR_BINDING);
 
     //RGBA* pDest = static_cast<RGBA*>(
     //	vbuf->lock(HardwareBuffer::HBL_NORMAL) );
     RGBA* pDest = (RGBA*)malloc(vbuf->getSizeInBytes());
     RGBA* oDest = pDest;
 
-    for (size_t i = 0; i < mAllocSize; ++i)
+    // Each character is represented by six vertices in Ogre's text overlay.
+    const size_t allocatedChars = vbuf->getNumVertices() / 6;
+    for (size_t i = 0; i < allocatedChars; ++i)
     {
         if (i < m_Colors.size())
         {

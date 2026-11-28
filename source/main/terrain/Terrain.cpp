@@ -322,7 +322,11 @@ void RoR::Terrain::initLight()
         m_main_light = App::GetGfxScene()->GetSceneManager()->createLight("MainLight");
         //directional light for shadow
         m_main_light->setType(Light::LT_DIRECTIONAL);
-        m_main_light->setDirection(Ogre::Vector3(0.785, -0.423, 0.453).normalisedCopy());
+        // OGRE14 directional light orientation is owned by a SceneNode.
+        Ogre::SceneNode* main_light_node =
+            App::GetGfxScene()->GetSceneManager()->getRootSceneNode()->createChildSceneNode();
+        main_light_node->attachObject(m_main_light);
+        main_light_node->setDirection(Ogre::Vector3(0.785, -0.423, 0.453).normalisedCopy());
 
         m_main_light->setDiffuseColour(m_def->ambient_color);
         m_main_light->setSpecularColour(m_def->ambient_color);

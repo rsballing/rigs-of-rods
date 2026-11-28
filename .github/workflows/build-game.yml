@@ -1,7 +1,7 @@
 ---
 name: Build game
 
-on: [ push, pull_request ]
+on: [ push, pull_request, workflow_dispatch ]
 
 # Obsolete graphics-preview commits should not consume Windows build capacity.
 # Other branches and pull requests retain their normal build behavior.
@@ -14,7 +14,8 @@ jobs:
     name: Linux build on Ubuntu
     # Linux Conan currently fails on an unrelated libalsa dependency conflict.
     # Keep Windows graphics-preview builds independent of the Linux job.
-    if: github.ref != 'refs/heads/graphics-overhaul'
+    # OGRE 14 PRs are already tested by branch pushes; avoid duplicate Linux builds.
+    if: github.ref != 'refs/heads/graphics-overhaul' && (github.event_name != 'pull_request' || github.head_ref != 'ogre14-migration')
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v7
@@ -49,19 +50,26 @@ jobs:
 
         shell: bash
 
+      - name: Export experimental MyGUI recipe for OGRE 14
+        if: github.ref == 'refs/heads/ogre14-migration' || github.head_ref == 'ogre14-migration'
+        shell: bash
+        run: conan export cmake/conan-recipes/mygui --user=anotherfoxguy --channel=stable
+
       - name: Configure
         run: |
           conan profile detect --force
           echo "tools.system.package_manager:mode = install" > ~/.conan2/global.conf
           echo "tools.system.package_manager:sudo = True" >> ~/.conan2/global.conf
-          conan remote add rigs-of-rods-deps https://nexus.anotherfoxguy.com/repository/rigs-of-rods/ -f
+          conan remote add rigs-of-rods-deps https://conan.cloudsmith.io/rigs-of-rods/deps/ -f
           cmake . -GNinja -DCMAKE_BUILD_TYPE=Release -Bbuild -DCMAKE_PROJECT_TOP_LEVEL_INCLUDES=cmake/conan_provider.cmake -DCMAKE_INSTALL_PREFIX=redist -DCREATE_CONTENT_FOLDER=ON
         shell: bash
 
       - name: Build
         run: |
           cd build
-          ninja install
+          # Keep building independent source units after failures so that
+          # a single expensive OGRE 14 run exposes multiple compiler errors.
+          ninja -k 25 install
         shell: bash
 
       - name: Copy *.so files
@@ -89,6 +97,8 @@ jobs:
 
   build-msvc:
     name: Windows build
+    # OGRE 14 has its own Windows job; keep generic Windows builds on other branches.
+    if: github.ref != 'refs/heads/ogre14-migration' && github.head_ref != 'ogre14-migration'
     runs-on: windows-2025
     permissions:
       contents: write  # Required to create a GitHub prerelease on this fork
@@ -115,9 +125,14 @@ jobs:
       - name: Enable Developer Command Prompt
         uses: ilammy/msvc-dev-cmd@v1
 
+      - name: Export experimental MyGUI recipe for OGRE 14
+        if: github.ref == 'refs/heads/ogre14-migration' || github.head_ref == 'ogre14-migration'
+        shell: cmd
+        run: conan export cmake/conan-recipes/mygui --user=anotherfoxguy --channel=stable
+
       - name: Configure
         run: |
-          conan remote add rigs-of-rods-deps https://nexus.anotherfoxguy.com/repository/rigs-of-rods/ -f
+          conan remote add rigs-of-rods-deps https://conan.cloudsmith.io/rigs-of-rods/deps/ -f
           cmake . -GNinja -DCMAKE_BUILD_TYPE=Release -Bbuild -DCMAKE_PROJECT_TOP_LEVEL_INCLUDES=cmake/conan_provider.cmake -DCMAKE_INSTALL_PREFIX=redist -DCREATE_CONTENT_FOLDER=ON
         shell: cmd
 

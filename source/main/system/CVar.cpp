@@ -44,6 +44,7 @@ void Console::cVarSetupBuiltins()
     App::app_custom_scripts      = this->cVarCreate("app_custom_scripts",      "",                           CVAR_ARCHIVE,                     "");
     App::app_recent_scripts      = this->cVarCreate("app_recent_scripts",      "",                           CVAR_ARCHIVE,                     "");
 
+    this->cVarCreate("sim_physics_hz", "Physics calculation rate", CVAR_ARCHIVE | CVAR_TYPE_INT, "2000");
     App::sim_state               = this->cVarCreate("sim_state",               "",                                          CVAR_TYPE_INT,     "0"/*(int)SimState::OFF*/);
     App::sim_terrain_name        = this->cVarCreate("sim_terrain_name",        "",                           0);
     App::sim_terrain_gui_name    = this->cVarCreate("sim_terrain_gui_name",    "",                           0);
@@ -95,7 +96,7 @@ void Console::cVarSetupBuiltins()
     App::diag_log_beam_deform    = this->cVarCreate("diag_log_beam_deform",    "Beam Deform Debug",          CVAR_ARCHIVE | CVAR_TYPE_BOOL,    "false");
     App::diag_log_beam_trigger   = this->cVarCreate("diag_log_beam_trigger",   "Trigger Debug",              CVAR_ARCHIVE | CVAR_TYPE_BOOL,    "false");
     App::diag_simple_materials   = this->cVarCreate("diag_simple_materials",    "SimpleMaterials",           CVAR_ARCHIVE | CVAR_TYPE_BOOL,    "false");
-    App::diag_warning_texture    = this->cVarCreate("diag_warning_texture",    "Warning texture",            CVAR_ARCHIVE | CVAR_TYPE_BOOL,    "false");
+    App::diag_warning_texture    = this->cVarCreate("diag_warning_texture",    "Warning texture",            CVAR_ARCHIVE | CVAR_TYPE_BOOL,    "true"); // OGRE14 DX11: avoid overwriting warning texture during startup
     App::diag_hide_broken_beams  = this->cVarCreate("diag_hide_broken_beams",  "Hide broken beams",          CVAR_ARCHIVE | CVAR_TYPE_BOOL,    "false");
     App::diag_hide_beam_stress   = this->cVarCreate("diag_hide_beam_stress",   "Hide beam stress",           CVAR_ARCHIVE | CVAR_TYPE_BOOL,    "true");
     App::diag_hide_wheel_info    = this->cVarCreate("diag_hide_wheel_info",    "Hide wheel info",            CVAR_ARCHIVE | CVAR_TYPE_BOOL,    "true");

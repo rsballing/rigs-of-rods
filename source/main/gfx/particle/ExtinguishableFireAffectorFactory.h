@@ -49,7 +49,7 @@ class ExtinguishableFireAffectorFactory : public ParticleAffectorFactory
 
 public:
 
-    typedef VectorIterator<vector<ParticleAffector*>::type> affectorIterator;
+    typedef VectorIterator<std::vector<ParticleAffector*>> affectorIterator;
 
     /** Allow external access to the mFactories iterator */
     affectorIterator getAffectorIterator() { return affectorIterator(mAffectors.begin(), mAffectors.end()); }

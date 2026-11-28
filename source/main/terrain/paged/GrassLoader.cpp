@@ -1145,10 +1145,15 @@ void GrassLayer::_updateShaders()
 				if (!vertexShader)
 				{
 					HighLevelGpuProgramManager& mgr = HighLevelGpuProgramManager::getSingleton();
-					if (mgr.isLanguageSupported("hlsl"))
-						shaderLanguage = "hlsl";
-					else if(mgr.isLanguageSupported("glsl"))
+					// The factory's language list is not specific to the active
+					// renderer: do not create HLSL shaders on OpenGL or GLSL on D3D.
+					const Ogre::String rendererName = Root::getSingleton().getRenderSystem()->getName();
+					if (rendererName.find("OpenGL") != Ogre::String::npos &&
+						mgr.isLanguageSupported("glsl"))
 						shaderLanguage = "glsl";
+					else if (rendererName.find("Direct3D") != Ogre::String::npos &&
+						mgr.isLanguageSupported("hlsl"))
+						shaderLanguage = "hlsl";
 					else
 						shaderLanguage = "cg";
 

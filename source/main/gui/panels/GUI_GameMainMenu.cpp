@@ -65,7 +65,7 @@ void GameMainMenu::DrawMenuPanel()
         title = "Main menu";
         // Include the two visible graphics-preview controls in keyboard
         // navigation and window-size calculations.
-        m_num_buttons = 9;
+        m_num_buttons = 10;
         if (FileExists(PathCombine(App::sys_savegames_dir->getStr(), "autosave.sav")))
         {
             m_num_buttons++;
@@ -73,7 +73,7 @@ void GameMainMenu::DrawMenuPanel()
     }
     else
     {
-        m_num_buttons = 5;
+        m_num_buttons = 6;
         if (App::mp_state->getEnum<MpState>() == MpState::CONNECTED)
         {
             title = "Menu";
@@ -146,15 +146,27 @@ void GameMainMenu::DrawMenuPanel()
         }
         else if (App::app_state->getEnum<AppState>() == AppState::SIMULATION)
         {
-            if (HighlightButton(_LC("MainMenu", "Resume game"), btn_size, button_index++))
+            const bool editing = App::sim_state->getEnum<SimState>() == SimState::EDITOR_MODE;
+            if (HighlightButton(editing ? "Resume editing" : _LC("MainMenu", "Resume game"), btn_size, button_index++))
             {
-                App::GetGameContext()->PushMessage(Message(MSG_SIM_UNPAUSE_REQUESTED));
+                if (!editing)
+                    App::GetGameContext()->PushMessage(Message(MSG_SIM_UNPAUSE_REQUESTED));
                 this->SetVisible(false);
             }
         }
 
         if (App::app_state->getEnum<AppState>() == AppState::MAIN_MENU)
         {
+            if (HighlightButton("Terrain editor", btn_size, button_index++))
+            {
+                // The editor operates on a loaded terrain, not the main menu.
+                m_open_editor_on_load = true;
+                this->SetVisible(false);
+                RoR::Message m(MSG_GUI_OPEN_SELECTOR_REQUESTED);
+                m.payload = reinterpret_cast<void*>(new LoaderType(LT_Terrain));
+                App::GetGameContext()->PushMessage(m);
+            }
+
             if (HighlightButton(_LC("MainMenu", "Multiplayer"), btn_size, button_index++))
             {
                 App::GetGuiManager()->MultiplayerSelector.SetVisible(true);
@@ -214,6 +226,22 @@ void GameMainMenu::DrawMenuPanel()
         }
         else if (App::app_state->getEnum<AppState>() == AppState::SIMULATION)
         {
+            const bool editing = App::sim_state->getEnum<SimState>() == SimState::EDITOR_MODE;
+            if (HighlightButton(editing ? "Play mode" : "Edit terrain", btn_size, button_index++))
+            {
+                if (editing)
+                {
+                    App::GetGameContext()->PushMessage(MSG_EDI_LEAVE_TERRN_EDITOR_REQUESTED);
+                }
+                else
+                {
+                    // Editing applies to scenery, not to the occupied vehicle.
+                    App::GetGameContext()->ChangePlayerActor(nullptr);
+                    App::GetGameContext()->PushMessage(MSG_EDI_ENTER_TERRN_EDITOR_REQUESTED);
+                }
+                this->SetVisible(false);
+            }
+
             if (HighlightButton(_LC("MainMenu", "Repository"), btn_size, button_index++))
             {
                 App::GetGuiManager()->RepositorySelector.SetVisible(true);

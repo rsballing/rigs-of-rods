@@ -241,6 +241,27 @@ class Ogre14MigrationContract(unittest.TestCase):
         self.assertIn("if (legacy_params == shared_sets.end())", shadows)
         self.assertIn("legacy_params->second->setNamedConstant", shadows)
 
+    def test_paged_geometry_shader_selection_matches_renderer(self):
+        # Merely loading an HLSL/GLSL factory does not make that language
+        # valid for the render system currently running the game.
+        for path in (
+            "source/main/terrain/paged/GrassLoader.cpp",
+            "source/main/terrain/paged/BatchPage.cpp",
+            "source/main/terrain/paged/StaticBillboardSet.cpp",
+        ):
+            cpp = source(path)
+            self.assertIn('rendererName.find("OpenGL")', cpp, path)
+            self.assertIn('rendererName.find("Direct3D")', cpp, path)
+            self.assertIn('mgr.isLanguageSupported("glsl")', cpp, path)
+            self.assertIn('mgr.isLanguageSupported("hlsl")', cpp, path)
+            self.assertIn('"worldViewProj"', cpp, path)
+
+    def test_windows_renderer_startup_smoke_records_log(self):
+        workflow = source(".github/workflows/ogre14-windows-compile.yml")
+        self.assertIn("Diagnostic renderer startup smoke test", workflow)
+        self.assertIn("redist/config/logs/RoR.log", workflow)
+        self.assertIn("Parameter called worldViewProj does not exist", workflow)
+
     def test_preserve_existing_graphics_controls_and_shadow_code(self):
         ui = source("source/main/gui/panels/GUI_GameSettings.cpp")
         menu = source("source/main/gui/panels/GUI_GameMainMenu.cpp")

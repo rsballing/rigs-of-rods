@@ -264,10 +264,15 @@ void BatchPage::_updateShaders()
         HighLevelGpuProgramManager& mgr = HighLevelGpuProgramManager::getSingleton();
 
 		String shaderLanguage;
-		if (mgr.isLanguageSupported("hlsl"))
-			shaderLanguage = "hlsl";
-		else if(mgr.isLanguageSupported("glsl"))
+		// Select shader language for the renderer currently in use, not
+		// just whichever language factory was registered first.
+		const Ogre::String rendererName = Root::getSingleton().getRenderSystem()->getName();
+		if (rendererName.find("OpenGL") != Ogre::String::npos &&
+			mgr.isLanguageSupported("glsl"))
 			shaderLanguage = "glsl";
+		else if (rendererName.find("Direct3D") != Ogre::String::npos &&
+			mgr.isLanguageSupported("hlsl"))
+			shaderLanguage = "hlsl";
 		else
 			shaderLanguage = "cg";
 

@@ -465,6 +465,21 @@ void BatchPage::_updateShaders()
 			vertexShader->load();
 		}
 
+		// Some legacy PagedGeometry shader sources cannot compile on OGRE 14
+		// renderers (notably modern Direct3D). Without a valid uniform list,
+		// binding worldViewProj throws and aborts loading the entire terrain.
+		// Keep the unfaded base batch material when this generated shader fails.
+		HighLevelGpuProgramPtr checkedShader = Ogre::static_pointer_cast<HighLevelGpuProgram>(
+			HighLevelGpuProgramManager::getSingleton().getByName(vertexProgName));
+		if (!checkedShader || !checkedShader->isSupported() ||
+			!checkedShader->getDefaultParameters()->_findNamedConstantDefinition("worldViewProj", false))
+		{
+			LogManager::getSingleton().logMessage(
+				"[RoR|PagedGeometry] BatchPage shader '" + vertexProgName +
+				"' has no usable worldViewProj parameter; preserving original material.");
+			continue;
+		}
+
 		//Now that the shader is ready to be applied, apply it
 		Ogre::StringStream materialSignature;
 		materialSignature << "BatchMat|";

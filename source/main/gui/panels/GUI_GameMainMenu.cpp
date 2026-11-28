@@ -73,7 +73,8 @@ void GameMainMenu::DrawMenuPanel()
     }
     else
     {
-        m_num_buttons = 6;
+        // Map editor is an offline-only tool, so multiplayer has one less action.
+        m_num_buttons = App::mp_state->getEnum<MpState>() == MpState::CONNECTED ? 5 : 6;
         if (App::mp_state->getEnum<MpState>() == MpState::CONNECTED)
         {
             title = "Menu";
@@ -226,20 +227,21 @@ void GameMainMenu::DrawMenuPanel()
         }
         else if (App::app_state->getEnum<AppState>() == AppState::SIMULATION)
         {
-            const bool editing = App::sim_state->getEnum<SimState>() == SimState::EDITOR_MODE;
-            if (HighlightButton(editing ? "Play mode" : "Edit terrain", btn_size, button_index++))
+            if (App::mp_state->getEnum<MpState>() != MpState::CONNECTED)
             {
-                if (editing)
+                const bool editing = App::sim_state->getEnum<SimState>() == SimState::EDITOR_MODE;
+                if (HighlightButton(editing ? "Play mode" : "Edit terrain", btn_size, button_index++))
                 {
-                    App::GetGameContext()->PushMessage(MSG_EDI_LEAVE_TERRN_EDITOR_REQUESTED);
+                    if (editing)
+                        App::GetGameContext()->PushMessage(MSG_EDI_LEAVE_TERRN_EDITOR_REQUESTED);
+                    else
+                    {
+                        // Editing applies to scenery, not the occupied vehicle.
+                        App::GetGameContext()->ChangePlayerActor(nullptr);
+                        App::GetGameContext()->PushMessage(MSG_EDI_ENTER_TERRN_EDITOR_REQUESTED);
+                    }
+                    this->SetVisible(false);
                 }
-                else
-                {
-                    // Editing applies to scenery, not to the occupied vehicle.
-                    App::GetGameContext()->ChangePlayerActor(nullptr);
-                    App::GetGameContext()->PushMessage(MSG_EDI_ENTER_TERRN_EDITOR_REQUESTED);
-                }
-                this->SetVisible(false);
             }
 
             if (HighlightButton(_LC("MainMenu", "Repository"), btn_size, button_index++))

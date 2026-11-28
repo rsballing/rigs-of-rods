@@ -70,12 +70,14 @@ public:
     void setActorInstanceId(ActorInstanceID_t instance_id);
 };
 
-/// Minimalist editor mode; orig. code by Ulteq/2016
-/// * Enter/Exit from/to simulation by Ctrl+Y (see EV_COMMON_TOGGLE_TERRAIN_EDITOR)
-/// * Select object by middle mouse button or Enter key (closest to avatar)
-/// * Rotate/move selected object with keys
-/// * Select/edit also preloaded actors - this resets the actor (added 2024 by Petr Ohlidal)
-/// Upon exit, the original *.tobj files are updated in place (only if terrain is unzipped in directory)
+/// Terrain editing mode; original keyboard controls by Ulteq/2016.
+/// * Enter/exit via Ctrl+Y or the ImGui editor/Play controls.
+/// * Select scenery from the object list, middle-click, or the original keys.
+/// * Move/rotate numerically or with legacy keyboard controls.
+/// * Preloaded actors can be selected; their transforms respawn their actor.
+/// * Save writes .tobj files for unzipped projects only. Leaving edit mode
+///   always writes an editor_out.log fallback (including for zipped maps).
+/// * Per-instance size is currently visual-only because .tobj has no scale field.
 class TerrainEditor
 {
 public:

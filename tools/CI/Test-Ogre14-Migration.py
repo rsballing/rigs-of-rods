@@ -259,7 +259,7 @@ class Ogre14MigrationContract(unittest.TestCase):
     def test_windows_renderer_startup_smoke_records_log(self):
         workflow = source(".github/workflows/ogre14-windows-compile.yml")
         self.assertIn("Diagnostic renderer startup smoke test", workflow)
-        self.assertIn("redist/config/logs/RoR.log", workflow)
+        self.assertIn("ogre14-smoke-diagnostics/RoR.log", workflow)
         self.assertIn("Parameter called worldViewProj does not exist", workflow)
 
     def test_preserve_existing_graphics_controls_and_shadow_code(self):

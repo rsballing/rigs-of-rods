@@ -279,7 +279,8 @@ class RendererSourceContracts(unittest.TestCase):
 
     def test_graphics_preview_controls_are_on_startup_menu(self):
         main_menu = load("source/main/gui/panels/GUI_GameMainMenu.cpp")
-        self.assertIn('m_num_buttons = 9;', main_menu)
+        self.assertIn('m_num_buttons = 10;', main_menu)
+        self.assertIn('HighlightButton("Terrain editor", btn_size, button_index++)', main_menu)
         self.assertIn('HighlightButton("Apply preview preset"', main_menu)
         self.assertIn('HighlightButton("Restore stock preset"', main_menu)
         self.assertIn("App::gfx_shadow_distance->setVal(700);", main_menu)

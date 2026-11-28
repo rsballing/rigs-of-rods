@@ -159,6 +159,54 @@ jobs:
           $process = Start-Process -FilePath $exe -ArgumentList '--ci-load-check' -WorkingDirectory $wd -Wait -PassThru
           if ($process.ExitCode -ne 0) { throw "OGRE14 RoR.exe DLL load check failed: exit $($process.ExitCode)" }
 
+      # A DLL load check is not enough: validate initialization of OGRE,
+      # material scripts and the main menu on the hosted Windows runner too.
+      # The runner's virtual GPU may differ from a user's physical graphics card.
+      - name: Diagnostic renderer startup smoke test (virtual GPU)
+        shell: pwsh
+        continue-on-error: true
+        timeout-minutes: 3
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $wd = (Resolve-Path './redist').Path
+          # Presence of this folder enables RoR's portable-user-data mode,
+          # keeping the diagnostic log in the Actions artifact.
+          New-Item -Path (Join-Path $wd 'config') -ItemType Directory -Force | Out-Null
+          $exe = Join-Path $wd 'RoR.exe'
+          $logPath = Join-Path $wd 'config/logs/RoR.log'
+          $proc = Start-Process -FilePath $exe -WorkingDirectory $wd -PassThru
+          $exitCode = $null
+          try {
+            if ($proc.WaitForExit(25000)) {
+              $exitCode = $proc.ExitCode
+              Write-Host "RoR.exe terminated during smoke test with code $exitCode"
+            } else {
+              Write-Host 'RoR.exe remains running after 25 seconds; closing diagnostic instance.'
+            }
+          }
+          finally {
+            $proc.Refresh()
+            if (-not $proc.HasExited) {
+              Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
+            }
+          }
+          if (Test-Path -LiteralPath $logPath) {
+            Write-Host '=== RoR.log final 120 lines ==='
+            Get-Content -LiteralPath $logPath -Tail 120
+            $errors = Select-String -LiteralPath $logPath -Pattern 'Parameter called worldViewProj does not exist|InvalidParametersException|Failed to compile|Compile error|ERROR:'
+            if ($errors) {
+              Write-Host '=== Rendering errors ==='
+              $errors | Select-Object -Last 20 | ForEach-Object { Write-Host $_.Line }
+              throw 'GPU startup diagnostic found shader errors; see uploaded RoR.log'
+            }
+          } else {
+            Write-Host 'No RoR.log was produced by the Windows virtual GPU startup test.'
+          }
+          if ($null -ne $exitCode -and $exitCode -ne 0) {
+            throw "RoR.exe did not complete startup successfully (exit $exitCode)."
+          }
+          Write-Host 'Smoke test completed without a detected shader error; real GPU verification is still required.'
+
       - name: Upload diagnostic logs even if compilation fails
         if: always()
         uses: actions/upload-artifact@v7
@@ -172,6 +220,7 @@ jobs:
             build/CMakeFiles/CMakeConfigureLog.yaml
             build/CMakeFiles/CMakeError.log
             build/CMakeFiles/CMakeOutput.log
+            redist/config/logs/RoR.log
 
       - name: Upload testable Windows game only after full build and DLL validation
         uses: actions/upload-artifact@v7

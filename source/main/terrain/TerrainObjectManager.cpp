@@ -675,6 +675,7 @@ bool TerrainObjectManager::LoadTerrainObject(const Ogre::String& name, const Ogr
     object->rotation = rot;
     object->initial_position = pos;
     object->initial_rotation = rot;
+    object->initial_scale = odef->header.scale;
     object->static_object_node = tenode;
     object->enable_collisions = enable_collisions;
     object->script_handler = scripthandler;

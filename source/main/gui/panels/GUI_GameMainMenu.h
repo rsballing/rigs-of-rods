@@ -40,7 +40,15 @@ public:
     const ImVec2  BUTTON_PADDING        = ImVec2(0.25f, 0.375f); //!< Relative to font size
 
     inline bool   IsVisible() const                { return m_is_visible; }
-    inline void   SetVisible(bool v)               { m_is_visible = v; m_kb_focus_index = -1; }
+    inline void   SetVisible(bool v)               { m_is_visible = v; m_kb_focus_index = -1; if (v) m_open_editor_on_load = false; }
+    // A terrain must be loaded before entering editor mode. The main menu
+    // queues the terrain picker, then the game consumes this request on load.
+    bool          ConsumeOpenEditorOnLoad()
+    {
+        const bool requested = m_open_editor_on_load;
+        m_open_editor_on_load = false;
+        return requested;
+    }
     void          Draw();
     void          CacheUpdatedNotice();
 
@@ -57,6 +65,7 @@ private:
     int              m_kb_enter_index = -1; // Focus positon when enter key was pressed.
     const char*      title;
     bool             cache_updated = false;
+    bool             m_open_editor_on_load = false;
 };
 
 } // namespace GUI

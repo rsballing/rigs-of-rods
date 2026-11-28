@@ -79,7 +79,7 @@ fragment_program grassFP cg
 		param_named_auto invShadowMapSize1	inverse_texture_size 1
 		param_named_auto invShadowMapSize2	inverse_texture_size 2
 		//param_named pssmSplitPoints MANUAL 0
-		param_named pssmSplitPoints float4 1.0 187 774 10000.0
+		shared_params_ref pssm_params
 	}
 }
 
@@ -114,17 +114,23 @@ material grass_GrassVS_
 			texture_unit shadow_tex0
 			{
 				content_type shadow
-				tex_address_mode clamp
+				tex_address_mode border
+				tex_border_colour 1 1 1 1
+				filtering none
 			}
 			texture_unit shadow_tex1
 			{
 				content_type shadow
-				tex_address_mode clamp
+				tex_address_mode border
+				tex_border_colour 1 1 1 1
+				filtering none
 			}
 			texture_unit shadow_tex2
 			{
 				content_type shadow
-				tex_address_mode clamp
+				tex_address_mode border
+				tex_border_colour 1 1 1 1
+				filtering none
 			}
 		}
 	}

@@ -76,6 +76,13 @@ int main(int argc, char *argv[])
 {
     using namespace RoR;
 
+    // CI-only process-launch preflight: resolving RoR.exe's static imports
+    // must succeed before Windows reaches main(). Leave without creating
+    // a renderer, game window, user configuration, or crash dialog.
+    // Dynamic renderer plugins and GPU shaders are tested separately.
+    if (argc == 2 && std::string(argv[1]) == "--ci-load-check")
+        return 0;
+
 #ifdef USE_CURL
     curl_global_init(CURL_GLOBAL_ALL); // MUST init before any threads are started
 #endif

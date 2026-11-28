@@ -1,0 +1,112 @@
+# Bundle the Microsoft-approved x64 D3DX9, D3DX10 and D3DX11 redistributables.
+# Source: Microsoft.DXSDK.D3DX 9.29.952.8 (NuGet, published by Microsoft).
+# These proprietary DLLs belong in the release ZIP beside RoR.exe, NOT in
+# the GPL-licensed source tree. See the Microsoft package LICENSE and NOTICE.
+[CmdletBinding()]
+param(
+    [Parameter(Mandatory = $true)]
+    [string]$DestinationDirectory
+)
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = 'Stop'
+
+$version = '9.29.952.8'
+$packageId = 'microsoft.dxsdk.d3dx'
+$uri = "https://api.nuget.org/v3-flatcontainer/$packageId/$version/$packageId.$version.nupkg"
+$destination = [System.IO.Path]::GetFullPath($DestinationDirectory)
+if (-not (Test-Path (Join-Path $destination 'RoR.exe'))) {
+    throw "RoR.exe must already exist in the install directory: $destination"
+}
+
+$work = Join-Path ([System.IO.Path]::GetTempPath()) ("ror-directx-" + [guid]::NewGuid().ToString('N'))
+New-Item -ItemType Directory -Path $work -Force | Out-Null
+try {
+    $nupkg = Join-Path $work 'Microsoft.DXSDK.D3DX.nupkg'
+    $extracted = Join-Path $work 'package'
+    Write-Host "Downloading official Microsoft.DXSDK.D3DX $version package..."
+    Invoke-WebRequest -Uri $uri -OutFile $nupkg
+    [System.IO.Compression.ZipFile]::ExtractToDirectory($nupkg, $extracted)
+
+    $runtimeFolder = Join-Path $extracted 'build/native/release/bin/x64'
+    foreach ($dll in @('D3DX9_43.dll', 'D3DCompiler_43.dll', 'd3dx10_43.dll', 'd3dx11_43.dll')) {
+        $source = Join-Path $runtimeFolder $dll
+        if (-not (Test-Path $source -PathType Leaf)) {
+            throw "Official package is missing $dll in the x64 release folder"
+        }
+        $signature = Get-AuthenticodeSignature -FilePath $source
+        if ($signature.Status -ne [System.Management.Automation.SignatureStatus]::Valid -or
+            -not $signature.SignerCertificate -or
+            $signature.SignerCertificate.Subject -notmatch 'Microsoft') {
+            throw "Expected valid Microsoft Authenticode signature for $dll; actual status: $($signature.Status)"
+        }
+        Copy-Item -Path $source -Destination (Join-Path $destination $dll) -Force
+        Write-Host "Added $dll from the official x64 release package."
+    }
+
+    $legalDir = Join-Path $destination 'licenses/Microsoft.DXSDK.D3DX'
+    New-Item -ItemType Directory -Path $legalDir -Force | Out-Null
+    # NuGet may put legal documents in the package root or nest them under
+    # a "build" or package metadata folder; accept LICENSE/NOTICE with an
+    # optional .txt/.md extension. Never rename a third-party license's body.
+    foreach ($legalName in @('LICENSE', 'NOTICE')) {
+        $legalCandidates = @(Get-ChildItem -Path $extracted -Recurse -File | Where-Object {
+            $_.BaseName -ieq $legalName -or $_.Name -ieq $legalName
+        } | Sort-Object FullName)
+        if ($legalCandidates.Count -gt 0) {
+            $legalSource = $legalCandidates[0].FullName
+            Copy-Item -LiteralPath $legalSource -Destination (Join-Path $legalDir $legalCandidates[0].Name) -Force
+            Write-Host "Included Microsoft $($legalCandidates[0].Name) in release"
+        }
+        else {
+            Write-Warning "Microsoft package contains no discoverable $legalName file; see official license URL in README."
+        }
+    }
+    @(
+        'Microsoft.DXSDK.D3DX 9.29.952.8',
+        'Copyright Microsoft Corporation. The DLLs are redistributed unmodified, application-local, with RoR.exe.',
+        'See the package license and notices; package source:',
+        'https://www.nuget.org/packages/Microsoft.DXSDK.D3DX/9.29.952.8',
+        'Microsoft license: https://www.nuget.org/packages/Microsoft.DXSDK.D3DX/9.29.952.8/License',
+        'These DLLs are not licensed as part of Rigs of Rods GPL source code.'
+    ) | Set-Content -Path (Join-Path $legalDir 'README.txt') -Encoding UTF8
+
+    # Verify portable Windows package before uploading or publishing it.
+    foreach ($filename in @(
+        'D3DX9_43.dll',
+        'D3DCompiler_43.dll',
+        'd3dx10_43.dll',
+        'd3dx11_43.dll',
+        'OgreMain.dll',
+        'RenderSystem_Direct3D9.dll',
+        'RenderSystem_Direct3D11.dll',
+        'RenderSystem_GL.dll',
+        'RoR.exe',
+        'plugins.cfg'
+    )) {
+        if (-not (Test-Path (Join-Path $destination $filename) -PathType Leaf)) {
+            throw "Incomplete Windows distribution: missing $filename"
+        }
+    }
+    $configLines = @(Get-Content -LiteralPath (Join-Path $destination 'plugins.cfg') |
+        ForEach-Object { $_.Trim() })
+    if ($configLines -notcontains 'PluginFolder=.') {
+        throw "plugins.cfg must use PluginFolder=. resolved beside RoR.exe"
+    }
+    foreach ($renderer in @(
+        'RenderSystem_Direct3D9',
+        'RenderSystem_Direct3D11',
+        'RenderSystem_GL'
+    )) {
+        if ($configLines -notcontains ("Plugin=" + $renderer)) {
+            throw "Configured renderer plugin not enabled: $renderer"
+        }
+    }
+    if (-not (Test-Path (Join-Path $destination 'resources') -PathType Container)) {
+        throw "Incomplete Windows distribution: missing resources directory"
+    }
+    Write-Host "Windows distribution: all four Microsoft x64 D3DX/Compiler DLLs and rendering plugins verified."
+}
+finally {
+    Remove-Item -LiteralPath $work -Recurse -Force -ErrorAction SilentlyContinue
+}

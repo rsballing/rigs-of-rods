@@ -237,11 +237,20 @@ bool AppContext::SetUpRendering()
 	std::string plugins_path = PathCombine(RoR::App::sys_process_dir->getStr(), "plugins.cfg");
 #endif
     LOG(fmt::format("[RoR|Startup|Rendering] Loading OGRE renderer plugins config '{}'.", plugins_path));
+    std::string renderer_plugin_errors;
     try
     {
         Ogre::ConfigFile cfg;
         cfg.load(plugins_path);
         std::string plugin_dir = cfg.getSetting("PluginFolder", /*section=*/"", /*default=*/App::sys_process_dir->getStr());
+        // OGRE resolves relative plugin paths against the current working
+        // directory, which may differ from the executable directory when
+        // launched through a shortcut or directly from File Explorer.
+        // The distributed plugins.cfg uses PluginFolder=.; resolve that
+        // explicitly to the directory containing RoR.exe.
+        if (plugin_dir.empty() || plugin_dir == ".")
+            plugin_dir = App::sys_process_dir->getStr();
+        LOG(fmt::format("[RoR|Startup|Rendering] Loading renderer plugins from folder '{}'", plugin_dir));
         Ogre::StringVector plugins = cfg.getMultiSetting("Plugin");
         for (Ogre::String plugin_filename: plugins)
         {
@@ -249,7 +258,17 @@ bool AppContext::SetUpRendering()
             {
                 m_ogre_root->loadPlugin(PathCombine(plugin_dir, plugin_filename));
             }
-            catch (Ogre::Exception&) {} // Logged by OGRE
+            catch (Ogre::Exception& e)
+            {
+                // Preserve the concrete DLL-loader error for Windows users.
+                // Generic "No render system plugin available" was masking
+                // missing D3DX9_43.dll / D3DCompiler_43.dll dependencies.
+                if (plugin_filename.find("RenderSystem_") != Ogre::String::npos)
+                {
+                    renderer_plugin_errors += fmt::format("{}: {}\n",
+                        plugin_filename, e.getDescription());
+                }
+            }
         }
     }
     catch (Ogre::Exception& e)
@@ -277,7 +296,10 @@ bool AppContext::SetUpRendering()
             }
             else
             {
-                ErrorUtils::ShowError (_L("Startup error"), _L("No render system plugin available. Check your plugins.cfg"));
+                std::string info = _L("No render system plugin available. Check your plugins.cfg");
+                if (!renderer_plugin_errors.empty())
+                    info += std::string("\n\n") + renderer_plugin_errors;
+                ErrorUtils::ShowError (_L("Startup error"), info);
                 return false;
             }
         }

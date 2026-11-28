@@ -26,6 +26,8 @@ THE SOFTWARE.
 -----------------------------------------------------------------------------
 */
 #include "OgreTerrainPSSMMaterialGenerator.h"
+#include "Application.h"
+#include "ShadowQualitySettings.h"
 
 #include <Terrain/OgreTerrain.h>
 #include <OgreMaterialManager.h>
@@ -413,6 +415,10 @@ void TerrainPSSMMaterialGenerator::SM2Profile::addTechnique(
         {
             TextureUnitState* tu = pass->createTextureUnitState();
             tu->setContentType(TextureUnitState::CONTENT_SHADOW);
+            // Manual PCF compares each sampled depth. Bilinear filtering
+            // interpolates depths before that comparison, producing false
+            // self-shadowing and bright/dark edge artifacts.
+            tu->setTextureFiltering(TFO_NONE);
             tu->setTextureAddressingMode(TextureUnitState::TAM_BORDER);
             tu->setTextureBorderColour(ColourValue::White);
         }
@@ -577,10 +583,11 @@ void TerrainPSSMMaterialGenerator::SM2Profile::ShaderHelper::defaultFpParams(
         {
             PSSMShadowCameraSetup* pssm = prof->getReceiveDynamicShadowsPSSM();
             numTextures = pssm->getSplitCount();
-            Vector4 splitPoints;
+            Vector4 splitPoints(0, 0, 0, 0);
             const PSSMShadowCameraSetup::SplitPointList& splitPointList = pssm->getSplitPoints();
-            // Populate from split point 1, not 0, since split 0 isn't useful (usually 0)
-            for (uint i = 1; i < numTextures; ++i)
+            // Split 0 is the near plane. Pack each cascade end, including
+            // the far boundary, so the shader can reject out-of-range pixels.
+            for (uint i = 1; i <= numTextures && i <= 4; ++i)
             {
                 splitPoints[i - 1] = splitPointList[i];
             }
@@ -1315,11 +1322,12 @@ void TerrainPSSMMaterialGenerator::SM2Profile::ShaderHelperCg::generateFpFooter(
 void TerrainPSSMMaterialGenerator::SM2Profile::ShaderHelperCg::generateFpDynamicShadowsHelpers(
     const SM2Profile* prof, const Terrain* terrain, TechniqueType tt, Ogre::StringStream& outStream)
 {
-    // TODO make filtering configurable
+    // Quality 0-1: 2x2 PCF (4 taps); 2: 3x3 (9); 3: 5x5 (25).
+    const int shadow_samples = RoR::ShadowQualitySettings::TerrainPcfWidth(RoR::App::gfx_shadow_quality->getInt());
     outStream <<
         "// Simple PCF \n"
         "// Number of samples in one dimension (square for total samples) \n"
-        "#define NUM_SHADOW_SAMPLES_1D 2.0 \n"
+        "#define NUM_SHADOW_SAMPLES_1D " << shadow_samples << ".0 \n"
         "#define SHADOW_FILTER_SCALE 1 \n"
 
         "#define SHADOW_SAMPLES NUM_SHADOW_SAMPLES_1D*NUM_SHADOW_SAMPLES_1D \n"
@@ -1334,7 +1342,7 @@ void TerrainPSSMMaterialGenerator::SM2Profile::ShaderHelperCg::generateFpDynamic
         outStream <<
             "float calcDepthShadow(sampler2D shadowMap, float4 uv, float invShadowMapSize) \n"
             "{ \n"
-            "	// 4-sample PCF \n"
+            "	// Quality-dependent PCF \n"
 
             "	float shadow = 0.0; \n"
             "	float offset = (NUM_SHADOW_SAMPLES_1D/2 - 0.5) * SHADOW_FILTER_SCALE; \n"
@@ -1346,7 +1354,7 @@ void TerrainPSSMMaterialGenerator::SM2Profile::ShaderHelperCg::generateFpDynamic
             "			// to avoid gradient issues inside loops \n"
             "			newUV = newUV / newUV.w; \n"
             "			float depth = tex2D(shadowMap, newUV.xy, 1, 1).x; \n"
-            "			if (depth >= 1 || depth >= uv.z)\n"
+            "			if (depth >= 1 || depth >= newUV.z)\n"
             "				shadow += 1.0;\n"
             "		} \n"
 
@@ -1394,8 +1402,12 @@ void TerrainPSSMMaterialGenerator::SM2Profile::ShaderHelperCg::generateFpDynamic
         outStream << "\n"
             "	float4 pssmSplitPoints, float camDepth) \n"
             "{ \n"
-            "	float shadow; \n"
-            "	// calculate shadow \n";
+            "\tfloat shadow = 1.0; \n"
+            // Beyond the final split, shadow textures contain no coverage.
+            // Treat those pixels as fully lit rather than smearing the last map.
+            "\tif (camDepth > pssmSplitPoints." << ShaderHelper::getChannel(numTextures - 1)
+            << ") return 1.0; \n"
+            "\t// calculate shadow \n";
 
         for (uint i = 0; i < numTextures; ++i)
         {

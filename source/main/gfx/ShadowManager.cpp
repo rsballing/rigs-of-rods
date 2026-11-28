@@ -19,6 +19,7 @@
 */
 
 #include "ShadowManager.h"
+#include "ShadowQualitySettings.h"
 
 #include "Actor.h"
 #include "CameraManager.h"
@@ -53,8 +54,11 @@ void ShadowManager::loadConfiguration()
 
 int ShadowManager::updateShadowTechnique()
 {
-    float scoef = 0.5;
-    App::GetGfxScene()->GetSceneManager()->setShadowColour(Ogre::ColourValue(0.563 + scoef, 0.578 + scoef, 0.625 + scoef));
+    // Keep the shadow tint within the normal [0, 1] colour range.
+    // The previous +0.5 offset pushed each channel above 1.0, which
+    // could wash out shadows in techniques that use this colour.
+    // Integrated PSSM receivers may use shader-defined shadow tints instead.
+    App::GetGfxScene()->GetSceneManager()->setShadowColour(Ogre::ColourValue(0.563f, 0.578f, 0.625f));
     App::GetGfxScene()->GetSceneManager()->setShowDebugShadows(false);
 
     if (App::gfx_shadow_type->getEnum<GfxShadowType>() == GfxShadowType::PSSM)
@@ -94,8 +98,13 @@ void ShadowManager::processPSSM()
 {
     App::GetGfxScene()->GetSceneManager()->setShadowTechnique(Ogre::SHADOWTYPE_TEXTURE_ADDITIVE_INTEGRATED);
 
-    App::GetGfxScene()->GetSceneManager()->setShadowDirectionalLightExtrusionDistance(299.0f);
-    App::GetGfxScene()->GetSceneManager()->setShadowFarDistance(350.0f);
+    // Re-read quality when PSSM is configured, including after terrain reloads.
+    PSSM_Shadows.Quality = App::gfx_shadow_quality->getInt();
+
+    // Expand the cascade range when requested; keep the 350-unit default.
+    const int shadow_distance = ShadowQualitySettings::ClampDistance(App::gfx_shadow_distance->getInt());
+    App::GetGfxScene()->GetSceneManager()->setShadowDirectionalLightExtrusionDistance(ShadowQualitySettings::DirectionalExtrusion(shadow_distance));
+    App::GetGfxScene()->GetSceneManager()->setShadowFarDistance(static_cast<float>(shadow_distance));
     App::GetGfxScene()->GetSceneManager()->setShadowTextureCountPerLightType(Ogre::Light::LT_DIRECTIONAL, PSSM_Shadows.ShadowsTextureNum);
     App::GetGfxScene()->GetSceneManager()->setShadowTextureCount(PSSM_Shadows.ShadowsTextureNum);
 
@@ -137,22 +146,38 @@ void ShadowManager::processPSSM()
 
     if (!PSSM_Shadows.mPSSMSetup)
     {
-        // shadow camera setup
-        Ogre::PSSMShadowCameraSetup* pssmSetup = new Ogre::PSSMShadowCameraSetup();
-
-        pssmSetup->calculateSplitPoints(3, App::GetCameraManager()->GetCamera()->getNearClipDistance(), App::GetGfxScene()->GetSceneManager()->getShadowFarDistance(), PSSM_Shadows.lambda);
-        pssmSetup->setSplitPadding(App::GetCameraManager()->GetCamera()->getNearClipDistance());
-
-        pssmSetup->setOptimalAdjustFactor(0, -1);
-        pssmSetup->setOptimalAdjustFactor(1, -1);
-        pssmSetup->setOptimalAdjustFactor(2, -1);
-
-        PSSM_Shadows.mPSSMSetup.bind(pssmSetup);
-
-        //Send split info to managed materials
-        setManagedMaterialSplitPoints(pssmSetup->getSplitPoints());
+        PSSM_Shadows.mPSSMSetup.bind(new Ogre::PSSMShadowCameraSetup());
     }
+
+    // Recalculate boundaries on reconfigure; otherwise a retained manager
+    // continues using stale split distances despite updated user settings.
+    Ogre::PSSMShadowCameraSetup* pssmSetup =
+        static_cast<Ogre::PSSMShadowCameraSetup*>(PSSM_Shadows.mPSSMSetup.get());
+    const Ogre::Real near_clip = App::GetCameraManager()->GetCamera()->getNearClipDistance();
+    pssmSetup->calculateSplitPoints(3, near_clip,
+        App::GetGfxScene()->GetSceneManager()->getShadowFarDistance(),
+        PSSM_Shadows.lambda);
+    pssmSetup->setSplitPadding(near_clip);
+    pssmSetup->setOptimalAdjustFactor(0, -1);
+    pssmSetup->setOptimalAdjustFactor(1, -1);
+    pssmSetup->setOptimalAdjustFactor(2, -1);
+
+    // Supply near, two boundaries, and far for the managed material shader.
+    setManagedMaterialSplitPoints(pssmSetup->getSplitPoints());
     App::GetGfxScene()->GetSceneManager()->setShadowCameraSetup(PSSM_Shadows.mPSSMSetup);
+
+    // Diagnostic evidence for A/B screenshots: users can confirm that
+    // changing settings actually rebuilt the terrain's PSSM configuration.
+    const auto& splits = pssmSetup->getSplitPoints();
+    Ogre::StringStream diag;
+    diag << "[RoR Graphics Preview] PSSM quality=" << PSSM_Shadows.Quality
+         << " distance=" << shadow_distance
+         << " terrain-PCF=" << ShadowQualitySettings::TerrainPcfWidth(PSSM_Shadows.Quality) << "x"
+         << ShadowQualitySettings::TerrainPcfWidth(PSSM_Shadows.Quality)
+         << " cascade-boundaries=";
+    for (size_t i = 0; i < splits.size(); ++i)
+        diag << (i ? "," : "") << splits[i];
+    Ogre::LogManager::getSingleton().logMessage(diag.str());
 }
 
 void ShadowManager::updatePSSM()
@@ -168,7 +193,11 @@ void ShadowManager::updateTerrainMaterial(Ogre::TerrainPSSMMaterialGenerator::SM
     {
         Ogre::PSSMShadowCameraSetup* pssmSetup = static_cast<Ogre::PSSMShadowCameraSetup*>(PSSM_Shadows.mPSSMSetup.get());
         matProfile->setReceiveDynamicShadowsDepth(true);
-        matProfile->setReceiveDynamicShadowsLowLod(false);
+        // In the graphics preview this can be enabled for the simplified
+        // (composite-map) terrain LOD as well. It remains opt-in because
+        // sampling three shadow maps on distant terrain is expensive.
+        matProfile->setReceiveDynamicShadowsLowLod(
+            App::gfx_terrain_low_lod_shadows->getBool());
         matProfile->setReceiveDynamicShadowsEnabled(true);
         matProfile->setReceiveDynamicShadowsPSSM(pssmSetup);
         matProfile->setLightmapEnabled(false);
@@ -177,9 +206,10 @@ void ShadowManager::updateTerrainMaterial(Ogre::TerrainPSSMMaterialGenerator::SM
 
 void ShadowManager::setManagedMaterialSplitPoints(Ogre::PSSMShadowCameraSetup::SplitPointList splitPointList)
 {
-    Ogre::Vector4 splitPoints;
+    Ogre::Vector4 splitPoints(0, 0, 0, 0);
 
-    for (int i = 0; i < 3; ++i)
+    // 3 cascades yield 4 endpoints (near, split1, split2, far).
+    for (int i = 0; i < 4; ++i)
         splitPoints[i] = splitPointList[i];
 
     GpuSharedParametersPtr p = GpuProgramManager::getSingleton().getSharedParameters("pssm_params");

@@ -1,3 +1,7 @@
+// Default PSSM shadow caster renders opaque depth, not alpha-tested depth.
+// The old alpha shader sampled alphaMap without a texture unit in this pass,
+// so its shadow coverage depended on an unbound sampler. Alpha-cutout
+// materials require their own explicit alpha-textured caster material.
 
 material Ogre/shadow/depth/caster
 {
@@ -10,7 +14,7 @@ material Ogre/shadow/depth/caster
 			vertex_program_ref PSSM/shadow_caster_vs
 			{
 			}
-			fragment_program_ref PSSM/shadow_caster_alpha_ps
+			fragment_program_ref PSSM/shadow_caster_ps
 			{
 			}
 		}

@@ -1,0 +1,88 @@
+name: Renderer migration prototype tests
+
+on:
+  push:
+    branches: [graphics-overhaul]
+    paths:
+      - 'experimental/renderer-migration/**'
+      - 'source/main/gfx/SkyLightingMath.h'
+      - 'source/main/gfx/ShadowQualitySettings.h'
+      - 'source/main/gfx/ShadowManager.cpp'
+      - 'source/main/AppContext.cpp'
+      - 'source/main/gfx/GfxActor.cpp'
+      - 'source/main/physics/flex/FlexObj.cpp'
+      - 'source/main/physics/flex/FlexObj.h'
+      - 'source/main/physics/flex/CabMeshSafety.h'
+      - 'source/main/physics/Actor.cpp'
+      - 'source/main/gui/panels/GUI_GameSettings.cpp'
+      - 'source/main/terrain/OgreTerrainPSSMMaterialGenerator.cpp'
+      - 'resources/materials/general.cg'
+      - 'resources/materials/grass.cg'
+      - 'tools/windows/Test-RoRWindowsPackage.ps1'
+      - 'resources/managed_materials/shadows/pssm/on/pssm.cg'
+      - 'resources/materials/general.program'
+      - 'resources/materials/general.material'
+      - 'resources/materials/grass.material'
+      - 'source/main/resources/ContentManager.cpp'
+      - 'resources/managed_materials/shadows/pssm/on/shadows.material'
+      - 'resources/managed_materials/shadows/pssm/on/shadows_depth.material'
+      - 'resources/managed_materials/shadows/pssm/on/depthshadows.program'
+      - 'tools/windows/Add-LegacyDirectX.ps1'
+      - 'tools/windows/Test-CgShaders.py'
+      - 'tools/windows/Test-RendererPlugins.ps1'
+      - 'tools/windows/Test-RoRWindowsPackage.ps1'
+      - 'source/main/main.cpp'
+      - '.github/workflows/build-game.yml'
+      - '.github/workflows/renderer-migration-tests.yml'
+  pull_request:
+    paths:
+      - 'experimental/renderer-migration/**'
+      - 'source/main/gfx/SkyLightingMath.h'
+      - 'source/main/gfx/ShadowQualitySettings.h'
+      - 'source/main/gfx/ShadowManager.cpp'
+      - 'source/main/AppContext.cpp'
+      - 'source/main/gfx/GfxActor.cpp'
+      - 'source/main/physics/flex/FlexObj.cpp'
+      - 'source/main/physics/flex/FlexObj.h'
+      - 'source/main/physics/flex/CabMeshSafety.h'
+      - 'source/main/physics/Actor.cpp'
+      - 'source/main/gui/panels/GUI_GameSettings.cpp'
+      - 'source/main/terrain/OgreTerrainPSSMMaterialGenerator.cpp'
+      - 'resources/materials/general.cg'
+      - 'resources/materials/grass.cg'
+      - 'tools/windows/Test-RoRWindowsPackage.ps1'
+      - 'resources/managed_materials/shadows/pssm/on/pssm.cg'
+      - 'resources/materials/general.program'
+      - 'resources/materials/general.material'
+      - 'resources/materials/grass.material'
+      - 'source/main/resources/ContentManager.cpp'
+      - 'resources/managed_materials/shadows/pssm/on/shadows.material'
+      - 'resources/managed_materials/shadows/pssm/on/shadows_depth.material'
+      - 'resources/managed_materials/shadows/pssm/on/depthshadows.program'
+      - 'tools/windows/Add-LegacyDirectX.ps1'
+      - 'tools/windows/Test-CgShaders.py'
+      - 'tools/windows/Test-RendererPlugins.ps1'
+      - 'tools/windows/Test-RoRWindowsPackage.ps1'
+      - 'source/main/main.cpp'
+      - '.github/workflows/build-game.yml'
+      - '.github/workflows/renderer-migration-tests.yml'
+  workflow_dispatch:
+
+jobs:
+  standalone-cpp-tests:
+    name: Standalone C++ (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate packaged shader-test Python syntax
+        run: python -m py_compile tools/windows/Test-CgShaders.py
+      - name: Configure
+        run: cmake -S experimental/renderer-migration -B build/renderer-migration -DCMAKE_BUILD_TYPE=Release
+      - name: Build
+        run: cmake --build build/renderer-migration --config Release --parallel 2
+      - name: Test
+        run: ctest --test-dir build/renderer-migration -C Release --output-on-failure

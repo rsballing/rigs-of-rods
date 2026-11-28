@@ -21,7 +21,8 @@
 
 #include "FlexObj.h"
 
-#include "ApproxMath.h" // fast_normalise()
+#include "CabMeshSafety.h" // safe visual collapse policy
+#include <cmath>
 #include "GfxActor.h"
 
 #include <Ogre.h>
@@ -72,6 +73,10 @@ FlexObj::FlexObj(RoR::GfxActor* gfx_actor, node_t* all_nodes, std::vector<CabTex
     {
         m_indices[i]=ComputeVertexPos(static_cast<int>(i/3), triangles[i], submesh_defs);
     }
+    // This counts shared *physics nodes* across triangle/UV seams, not
+    // just GPU indices, so a collapsed face cannot detach an adjacent panel.
+    m_vertex_triangle_use_counts = CabMeshSafety::CountTriangleReferencesByNode(
+        m_vertex_nodes, m_vertex_count, m_indices, m_index_count);
 
     m_s_ref=(float*)malloc(numtriangles*sizeof(float));
 
@@ -186,7 +191,9 @@ int FlexObj::ComputeVertexPos(int tidx, int v, std::vector<CabSubmesh>& submeshe
 Vector3 FlexObj::UpdateMesh()
 {
     RoR::NodeSB* all_nodes = m_gfx_actor->GetSimNodeBuffer();
-    Ogre::Vector3 center=(all_nodes[m_vertex_nodes[0]].AbsPosition+all_nodes[m_vertex_nodes[1]].AbsPosition)/2.0;
+    // Halve first: even a representable midpoint can overflow in (a+b)/2.
+    const Ogre::Vector3 center = all_nodes[m_vertex_nodes[0]].AbsPosition * 0.5f
+        + all_nodes[m_vertex_nodes[1]].AbsPosition * 0.5f;
     for (size_t i=0; i<m_vertex_count; i++)
     {
         //set position
@@ -197,31 +204,50 @@ Vector3 FlexObj::UpdateMesh()
     //accumulate normals per triangle
     for (size_t i=0; i<m_index_count/3; i++)
     {
-        Vector3 v1, v2;
-        v1=all_nodes[m_vertex_nodes[m_indices[i*3+1]]].AbsPosition-all_nodes[m_vertex_nodes[m_indices[i*3]]].AbsPosition;
-        v2=all_nodes[m_vertex_nodes[m_indices[i*3+2]]].AbsPosition-all_nodes[m_vertex_nodes[m_indices[i*3]]].AbsPosition;
-        v1=v1.crossProduct(v2);
-        float s=v1.length();
+        const Vector3 edge1 = all_nodes[m_vertex_nodes[m_indices[i*3+1]]].AbsPosition
+            - all_nodes[m_vertex_nodes[m_indices[i*3]]].AbsPosition;
+        const Vector3 edge2 = all_nodes[m_vertex_nodes[m_indices[i*3+2]]].AbsPosition
+            - all_nodes[m_vertex_nodes[m_indices[i*3]]].AbsPosition;
+        const Vector3 face_normal = edge1.crossProduct(edge2);
+        const float doubled_area = face_normal.length();
 
-        //avoid large tris
-        if (s>m_s_ref[i])
-        {
-            m_vertices[m_indices[i*3+1]].position=m_vertices[m_indices[i*3]].position+Vector3(0.1,0,0);
-            m_vertices[m_indices[i*3+2]].position=m_vertices[m_indices[i*3]].position+Vector3(0,0,0.1);
-        }
-
-        if (s == 0)
+        // Reject invalid/degenerate faces so that they cannot introduce NaN
+        // normals while the cab mesh deforms or a triangle folds over itself.
+        if (!std::isfinite(doubled_area) || doubled_area <= 1e-10f)
             continue;
 
-        v1=v1/s;
-        m_vertices[m_indices[i*3]].normal+=v1;
-        m_vertices[m_indices[i*3+1]].normal+=v1;
-        m_vertices[m_indices[i*3+2]].normal+=v1;
+        // Preserve topology: collapsing a vertex shared by multiple
+        // triangles would distort neighbouring panels even though their
+        // physics nodes never moved. Shared vertices stay at simulated
+        // positions; only isolated vertices may be collapsed.
+        if (doubled_area > m_s_ref[i])
+        {
+            if (CabMeshSafety::CanCollapseFace(
+                    doubled_area, m_s_ref[i],
+                    m_vertex_triangle_use_counts[m_indices[i*3+1]],
+                    m_vertex_triangle_use_counts[m_indices[i*3+2]]))
+            {
+                m_vertices[m_indices[i*3+1]].position=m_vertices[m_indices[i*3]].position+Vector3(0.1,0,0);
+                m_vertices[m_indices[i*3+2]].position=m_vertices[m_indices[i*3]].position+Vector3(0,0,0.1);
+                continue;
+            }
+        }
+
+        // Use area-weighted face normals, as in the renderer-neutral mesh
+        // prototype. Small triangles should not steer the lighting of much
+        // larger cab panels equally strongly just because they share nodes.
+        m_vertices[m_indices[i*3]].normal += face_normal;
+        m_vertices[m_indices[i*3+1]].normal += face_normal;
+        m_vertices[m_indices[i*3+2]].normal += face_normal;
     }
     //normalize
     for (size_t i=0; i<m_vertex_count; i++)
     {
-        m_vertices[i].normal = approx_normalise(m_vertices[i].normal);
+        const float normal_length_sq = m_vertices[i].normal.squaredLength();
+        if (std::isfinite(normal_length_sq) && normal_length_sq > 1e-20f)
+            m_vertices[i].normal /= std::sqrt(normal_length_sq);
+        else
+            m_vertices[i].normal = Vector3::UNIT_Y; // degenerate-face fallback
     }
 
     return center;

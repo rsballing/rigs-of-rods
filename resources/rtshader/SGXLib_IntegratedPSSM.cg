@@ -33,7 +33,7 @@ float _SGX_ShadowPCF4(sampler2D shadowMap, float4 shadowMapPos, float2 offset)
 {
 	shadowMapPos = shadowMapPos / shadowMapPos.w;
 	float2 uv = shadowMapPos.xy;
-	float3 o = float3(offset, -offset.x) * 0.3f;
+	float3 o = float3(offset, -offset.x) * 0.75f;
 
 	// Note: We using 2x2 PCF. Good enough and is alot faster.
 	float c =	(shadowMapPos.z <= tex2D(shadowMap, uv.xy - o.xy).r) ? 1 : 0; // top left

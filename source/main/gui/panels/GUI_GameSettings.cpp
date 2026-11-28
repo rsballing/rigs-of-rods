@@ -20,12 +20,17 @@
 #include "GUI_GameSettings.h"
 
 #include "AppContext.h"
+#include "Actor.h"
+#include "ActorManager.h"
+#include "GfxActor.h"
 #include "CacheSystem.h"
 #include "GameContext.h"
 #include "GUIManager.h"
 #include "GUIUtils.h"
 #include "Language.h"
 #include "SoundManager.h"
+#include "Terrain.h"
+#include "Terrn2FileFormat.h"
 
 #ifdef USE_OPENAL
 #   include <alc.h>
@@ -393,7 +398,53 @@ void GameSettings::DrawUiSettings()
 
 void GameSettings::DrawGraphicsSettings()
 {
+    auto restore_actor_shadows = []()
+    {
+        if (App::app_state->getEnum<AppState>() != AppState::SIMULATION)
+            return;
+        for (ActorPtr const& actor : App::GetGameContext()->GetActorManager()->GetActors())
+        {
+            if (actor.GetRef() && actor->GetGfxActor())
+                actor->GetGfxActor()->SetCastShadows(true);
+        }
+    };
+
     ImGui::TextDisabled("%s", _LC("GameSettings", "Video settings"));
+
+    // Show the renderer actually selected by OGRE, not just a configured
+    // preference. This helps diagnose D3D9 vs D3D11 shader differences when
+    // comparing graphics previews or following legacy DLL instructions.
+    Ogre::Root* root = App::GetAppContext()->GetOgreRoot();
+    if (root != nullptr && root->getRenderSystem() != nullptr)
+    {
+        ImGui::TextDisabled("Active renderer: %s", root->getRenderSystem()->getName().c_str());
+    }
+
+    // One-click baseline for testing the preview's actual graphics changes.
+    // Do not force the SkyX mode on maps which do not support its configuration.
+    if (ImGui::Button("Apply experimental graphics preset"))
+    {
+        App::gfx_shadow_type->setVal(static_cast<int>(GfxShadowType::PSSM));
+        App::gfx_shadow_quality->setVal(2); // 3x3 PCF; Ultra 5x5 is expensive.
+        App::gfx_shadow_distance->setVal(700);
+        App::gfx_terrain_low_lod_shadows->setVal(true);
+        App::gfx_reduce_shadows->setVal(false);
+        if (App::gfx_sky_mode->getEnum<GfxSkyMode>() == GfxSkyMode::SKYX)
+            App::gfx_natural_sunlight->setVal(true);
+        restore_actor_shadows();
+    }
+    // A stock baseline makes it possible to compare the same terrain without
+    // manually remembering five persistent graphics settings.
+    if (ImGui::Button("Restore stock graphics preset"))
+    {
+        App::gfx_shadow_type->setVal(static_cast<int>(GfxShadowType::PSSM));
+        App::gfx_shadow_quality->setVal(2);
+        App::gfx_shadow_distance->setVal(350);
+        App::gfx_terrain_low_lod_shadows->setVal(false);
+        App::gfx_reduce_shadows->setVal(true);
+        App::gfx_natural_sunlight->setVal(false);
+    }
+    ImGui::TextDisabled("Reload terrain or restart the game to apply PSSM changes.");
 
     DrawGCombo(App::gfx_flares_mode, _LC("GameSettings", "Light sources"),
         m_combo_items_light_sources.c_str());
@@ -403,15 +454,47 @@ void GameSettings::DrawGraphicsSettings()
 
     if (App::gfx_shadow_type->getEnum<GfxShadowType>() != GfxShadowType::NONE)
     {
-        DrawGCheckbox(App::gfx_reduce_shadows, _LC("GameSettings", "Shadow optimizations"));
+        if (DrawGCheckbox(App::gfx_reduce_shadows, _LC("GameSettings", "Shadow optimizations"))
+            && !App::gfx_reduce_shadows->getBool())
+        {
+            // Restore casting immediately; don't wait for a camera transition.
+            restore_actor_shadows();
+        }
         if (App::gfx_shadow_type->getEnum<GfxShadowType>() == GfxShadowType::PSSM)
         {
             DrawGIntSlider(App::gfx_shadow_quality, _LC("GameSettings", "Shadow quality"), 0, 3);
+            DrawGIntSlider(App::gfx_shadow_distance, "PSSM shadow distance (restart terrain)", 150, 1500);
+            DrawGCheckbox(App::gfx_terrain_low_lod_shadows,
+                "Experimental shadows on distant stock terrain (reload terrain)");
+            ImGui::TextWrapped(
+                "This option affects the low-detail terrain receiver, not "
+                "custom terrain materials or whether trees/buildings cast shadows.");
+
+            // The stock PSSM generator is bypassed for custom terrain
+            // materials. Explain the limitation instead of silently
+            // promising shadows the selected map cannot receive.
+            if (App::app_state->getEnum<AppState>() == AppState::SIMULATION)
+            {
+                const TerrainPtr& terrain = App::GetGameContext()->GetTerrain();
+                if (terrain.GetRef() != nullptr && terrain->GetDef() != nullptr &&
+                    !terrain->GetDef()->custom_material_name.empty())
+                {
+                    ImGui::TextWrapped(
+                        "This map uses a custom terrain material: dynamic PSSM "
+                        "shadows may not appear on its ground until the "
+                        "material's shader supports shadow reception.");
+                }
+            }
         }
     }
 
     DrawGCombo(App::gfx_sky_mode, _LC("GameSettings", "Sky gfx"),
         m_combo_items_sky_mode.c_str());
+
+    if (App::gfx_sky_mode->getEnum<GfxSkyMode>() == GfxSkyMode::SKYX)
+    {
+        DrawGCheckbox(App::gfx_natural_sunlight, "Experimental natural sunlight (SkyX)");
+    }
 
     if (App::gfx_sky_mode->getEnum<GfxSkyMode>() != GfxSkyMode::SKYX)
     {

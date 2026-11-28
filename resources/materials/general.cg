@@ -203,7 +203,7 @@ float shadowPCF(sampler2D shadowMap, float4 shadowMapPos, float2 offset)
 {
 	shadowMapPos = shadowMapPos / shadowMapPos.w;
 	float2 uv = shadowMapPos.xy;
-	float3 o = float3(offset, -offset.x) * 0.3f;
+	float3 o = float3(offset, -offset.x) * 0.75f;
 
 	///  bias =  -0.99f  -1 no shadow  0 all shadowed
 	float shPos = shadowMapPos.z /*+ 0.0f*/;
@@ -269,14 +269,16 @@ float4 diffuse_sh_ps(PIn IN,
 	{
 		//splitColour = float4(0, 0.9, 0, 1);
 		shadowing = shadowPCF(shadowMap1, LightPosition1, invShadowMapSize1.xy); //1
-	}else
+	}
+	else if (IN.uv.z <= pssmSplitPoints.w)
 	{
-		//splitColour = float4(0.9, 0.9, 0, 1);
-		shadowing = shadowPCF(shadowMap2, LightPosition2, invShadowMapSize2.xy); //2
-	}/**/
+		// Only sample the final cascade inside its valid depth interval.
+		shadowing = shadowPCF(shadowMap2, LightPosition2, invShadowMapSize2.xy);
+	}
+	// Beyond the final cascade the pixel remains fully lit.
 		//shadowing = shadowPCF(shadowMap0, LightPosition0, invShadowMapSize0.xy);
 
-	float3 clrSUM = diffuseTex.rgb * ambient + diffC * (0.25f + 0.75f * shadowing) + specC * shadowing;
+	float3 clrSUM = diffuseTex.rgb * ambient + (diffC + specC) * shadowing;
 	//return float4(/*normalTex.xyz*/normal, 1);  // test
 	
 	clrSUM = lerp(clrSUM, fogColor, /*IN.fogVal*/IN.wp.w);
@@ -340,14 +342,16 @@ float4 diffuse_sh_a_ps(PIn IN,
 	{
 		//splitColour = float4(0, 0.9, 0, 1);
 		shadowing = shadowPCF(shadowMap1, LightPosition1, invShadowMapSize1.xy); //1
-	}else
+	}
+	else if (IN.uv.z <= pssmSplitPoints.w)
 	{
-		//splitColour = float4(0.9, 0.9, 0, 1);
-		shadowing = shadowPCF(shadowMap2, LightPosition2, invShadowMapSize2.xy); //2
-	}/**/
+		// Only sample the final cascade inside its valid depth interval.
+		shadowing = shadowPCF(shadowMap2, LightPosition2, invShadowMapSize2.xy);
+	}
+	// Beyond the final cascade the pixel remains fully lit.
 		//shadowing = shadowPCF(shadowMap0, LightPosition0, invShadowMapSize0.xy);
 
-	float3 clrSUM = diffuseTex.rgb * ambient + diffC * (0.25f + 0.75f * shadowing) + specC * shadowing;
+	float3 clrSUM = diffuseTex.rgb * ambient + (diffC + specC) * shadowing;
 	//return float4(/*normalTex.xyz*/normal, 1);  // test
 	
 	clrSUM = lerp(clrSUM, fogColor, /*IN.fogVal*/IN.wp.w);

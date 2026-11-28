@@ -805,6 +805,9 @@ extern CVar* gfx_declutter_map;
 extern CVar* gfx_envmap_enabled;
 extern CVar* gfx_envmap_rate;
 extern CVar* gfx_shadow_quality;
+extern CVar* gfx_shadow_distance; // PSSM range in world units; takes effect on next terrain load
+extern CVar* gfx_terrain_low_lod_shadows; // Experimental: allow PSSM reception on low-detail stock terrain
+extern CVar* gfx_natural_sunlight; // Experimental SkyX sunlight tint (default off)
 extern CVar* gfx_skidmarks_mode;
 extern CVar* gfx_sight_range;
 extern CVar* gfx_camera_height;

@@ -81,7 +81,7 @@ float shadowPCF(sampler2D shadowMap, float4 shadowMapPos, float2 offset)
 {
 	shadowMapPos = shadowMapPos / shadowMapPos.w;
 	float2 uv = shadowMapPos.xy;
-	float3 o = float3(offset, -offset.x) * 0.3f;
+	float3 o = float3(offset, -offset.x) * 0.75f;
 
 	//return	(shadowMapPos.z <= tex2D(shadowMap, uv.xy).r) ? 1 : 0;
 	// Note: We using 2x2 PCF. Good enough and is alot faster.
@@ -89,7 +89,7 @@ float shadowPCF(sampler2D shadowMap, float4 shadowMapPos, float2 offset)
 	c +=		(shadowMapPos.z <= tex2D(shadowMap, uv.xy + o.xy).r) ? 1 : 0; //bottomright
 	c +=		(shadowMapPos.z <= tex2D(shadowMap, uv.xy + o.zy).r) ? 1 : 0; //bottomleft
 	c +=		(shadowMapPos.z <= tex2D(shadowMap, uv.xy - o.zy).r) ? 1 : 0; // topright
-	return c / 5;
+	return c / 4;
 }
 
 // to put it simply, this does 100% per pixel diffuse lighting
@@ -131,11 +131,13 @@ void shadow_receiver_ps(
 		splitColour = float4(0, 0.9, 0, 1);
 		shadowing = shadowPCF(shadowMap1, LightPosition1, invShadowMapSize1.xy);/*1*/
 	}
-	else
+	else if (uv.z <= pssmSplitPoints.w)
 	{
 		splitColour = float4(0.9, 0.9, 0, 1);
 		shadowing = shadowPCF(shadowMap2, LightPosition2, invShadowMapSize2.xy);/*2*/
 	}
+	// Outside the last PSSM cascade, keep the fragment lit. Sampling the
+	// final cascade beyond the shadow far plane can smear dark artifacts.
 
 	// retrieve normalised light vector, expand from range-compressed
 	float3 lightVec = normalize(OSlightDir);
@@ -151,7 +153,15 @@ void shadow_receiver_ps(
 	float shininess = specularColour.w;  specularColour.w = 1;
 
 	// calculate lit value.
-	float4 lighting = lit(dot(normal, lightVec), dot(normal, halfAngle), shininess * 52) * 	(0.3f + 0.7f * shadowing);
+	// A shadow blocks direct diffuse AND specular light. Preserve the sky
+	// ambient term separately below so occluded faces are not pitch black.
+	// The old 0.3 + 0.7 * shadowing kept 30% direct sun in full shadow,
+	// washing out vehicle and terrain contrast.
+	// Raster interpolation shortens vertex normals between triangles.
+	// Renormalize per pixel before diffuse/specular calculations; clamp the
+	// squared length so collapsed cab geometry cannot produce NaNs.
+	float3 surfaceNormal = normal * rsqrt(max(dot(normal, normal), 1e-8f));
+	float4 lighting = lit(dot(surfaceNormal, lightVec), dot(surfaceNormal, halfAngle), shininess * 52) * shadowing;
 
 
 	oColour = (diffuseColour * clamp(ambient + lightDiffuse * lighting.y, 0, 1)) + 	(lightSpecular * specularColour * lighting.z);

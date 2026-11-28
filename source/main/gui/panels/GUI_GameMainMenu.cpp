@@ -63,7 +63,9 @@ void GameMainMenu::DrawMenuPanel()
     if (App::app_state->getEnum<AppState>() == AppState::MAIN_MENU)
     {
         title = "Main menu";
-        m_num_buttons = 7;
+        // Include the two visible graphics-preview controls in keyboard
+        // navigation and window-size calculations.
+        m_num_buttons = 9;
         if (FileExists(PathCombine(App::sys_savegames_dir->getStr(), "autosave.sav")))
         {
             m_num_buttons++;
@@ -98,17 +100,30 @@ void GameMainMenu::DrawMenuPanel()
         const float btn_height = ImGui::GetTextLineHeight() + (BUTTON_PADDING.y * ImGui::GetFontSize() * 2);
         const float window_height = (m_num_buttons*btn_height) + (m_num_buttons*ImGui::GetStyle().ItemSpacing.y) + (2*ImGui::GetStyle().WindowPadding.y); // buttons + titlebar; 2x spacing around separator
         const float margin = display_size.y / 15.f;
-        const float top = display_size.y - window_height - margin;
+        // Keep the menu reachable when a small window or high UI scale
+        // would otherwise put the upper buttons above the viewport.
+        const float top = std::max(margin, display_size.y - window_height - margin);
         ImGui::SetNextWindowPos(ImVec2(margin, top));
     }
-    ImGui::SetNextWindowContentWidth(WINDOW_WIDTH * ImGui::GetFontSize());
+    // AlwaysAutoResize alone can grow the menu beyond the screen, hiding
+    // controls on small displays or when the user increases UI scaling.
+    // Constraining the height lets ImGui scroll rather than clip buttons.
+    const float edge_margin = std::max(8.f, display_size.y / 30.f);
+    const float max_width = std::max(1.f, display_size.x - 2.f * edge_margin);
+    const float max_height = std::max(1.f, display_size.y - 2.f * edge_margin);
+    ImGui::SetNextWindowSizeConstraints(ImVec2(0.f, 0.f), ImVec2(max_width, max_height));
+    const float desired_width = WINDOW_WIDTH * ImGui::GetFontSize();
+    ImGui::SetNextWindowContentWidth(std::min(desired_width,
+        std::max(1.f, max_width - ImGui::GetStyle().WindowPadding.x * 2.f)));
     int flags = ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize;
     if (ImGui::Begin(_LC("MainMenu", title), nullptr, static_cast<ImGuiWindowFlags_>(flags)))
     {
         this->HandleInputEvents();
 
         int button_index = 0;
-        ImVec2 btn_size(WINDOW_WIDTH * ImGui::GetFontSize(), 0.f);
+        // Avoid horizontal clipping when the window width is constrained.
+        ImVec2 btn_size(std::max(1.f, std::min(desired_width,
+            ImGui::GetContentRegionAvail().x)), 0.f);
 
         if (App::app_state->getEnum<AppState>() == AppState::MAIN_MENU)
         {
@@ -157,6 +172,33 @@ void GameMainMenu::DrawMenuPanel()
                 App::GetGuiManager()->GameSettings.SetVisible(true);
                 this->SetVisible(false);
             }
+
+            // Keep the graphics-preview controls discoverable at startup.
+            // The same presets are also available in Settings > Graphics.
+            // Main-menu-only application avoids modifying a running terrain.
+            ImGui::Separator();
+            ImGui::TextDisabled("Graphics preview");
+            if (HighlightButton("Apply preview preset", btn_size, button_index++))
+            {
+                App::gfx_shadow_type->setVal(static_cast<int>(GfxShadowType::PSSM));
+                App::gfx_shadow_quality->setVal(2);
+                App::gfx_shadow_distance->setVal(700);
+                App::gfx_terrain_low_lod_shadows->setVal(true);
+                App::gfx_reduce_shadows->setVal(false);
+                if (App::gfx_sky_mode->getEnum<GfxSkyMode>() == GfxSkyMode::SKYX)
+                    App::gfx_natural_sunlight->setVal(true);
+            }
+            if (HighlightButton("Restore stock preset", btn_size, button_index++))
+            {
+                App::gfx_shadow_type->setVal(static_cast<int>(GfxShadowType::PSSM));
+                App::gfx_shadow_quality->setVal(2);
+                App::gfx_shadow_distance->setVal(350);
+                App::gfx_terrain_low_lod_shadows->setVal(false);
+                App::gfx_reduce_shadows->setVal(true);
+                App::gfx_natural_sunlight->setVal(false);
+            }
+            ImGui::TextDisabled("Applied when you load a terrain.");
+            ImGui::Separator();
 
             if (HighlightButton(_LC("MainMenu", "Controls"), btn_size, button_index++))
             {

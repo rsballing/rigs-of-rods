@@ -196,6 +196,14 @@ void GUIManager::DrawSimGuiBuffered(GfxActor* player_gfx_actor)
 {
     this->DrawCommonGui();
 
+    if (App::app_state->getEnum<AppState>() == AppState::SIMULATION &&
+        App::sim_state->getEnum<SimState>() == SimState::EDITOR_MODE &&
+        App::GetGameContext()->GetTerrain())
+    {
+        // Use the normal RoR ImGui theme for the editing sidebar.
+        App::GetGameContext()->GetTerrain()->GetTerrainEditor()->DrawEditorPanel();
+    }
+
     if (player_gfx_actor && !this->GameMainMenu.IsVisible())
     {
         this->VehicleInfoTPanel.Draw(player_gfx_actor);
